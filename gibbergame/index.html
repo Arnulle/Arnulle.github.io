@@ -6,23 +6,61 @@
 <style>
     body {
         font-family: Arial, sans-serif;
+        background-color: #f4f4f8;
         text-align: center;
-        margin-top: 40px;
+        margin: 0;
+        padding: 20px;
     }
+
     #banner {
+        background-color: #4a90e2;
+        color: white;
+        padding: 15px;
+        border-radius: 12px;
         font-size: 2em;
         font-weight: bold;
         margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
+
     button {
         padding: 10px 20px;
         margin: 10px;
         font-size: 1em;
         cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        background-color: #4a90e2;
+        color: white;
+        transition: background-color 0.2s ease;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
     }
+    button:hover {
+        background-color: #357ABD;
+    }
+
     #words {
-        margin: 20px 0;
+        margin: 20px auto;
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .word-card {
+        background-color: white;
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         font-size: 1.2em;
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .word-card span {
+        font-weight: bold;
+        color: #555;
     }
 </style>
 </head>
@@ -40,18 +78,119 @@
 <button id="refreshBtn">Refresh Words</button>
 
 <script>
+    // Data: Each era has five categories
     const fullEras = {
-        1: ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "kiwi", "lemon", "mango"],
-        2: ["car", "bike", "bus", "train", "plane", "boat", "truck", "scooter", "subway", "helicopter"],
-        3: ["dog", "cat", "bird", "fish", "horse", "rabbit", "hamster", "snake", "turtle", "frog"],
-        4: ["red", "blue", "green", "yellow", "purple", "orange", "black", "white", "pink", "brown"],
-        5: ["rock", "jazz", "blues", "pop", "hiphop", "classical", "metal", "country", "folk", "reggae"]
+        1: {
+            everyday: ["stone", "fire", "wood", "water", "seed", "leaf", "mud", "fish", "bone", "shell", "earth","light"],
+            communal: ["home", "camp", "gather", "meal", "song", "dance", "help", "family", "friend", "child"],
+            military: ["club", "net", "trap", "watch", "run", "hide", "bow", "signal", "defend", "fight"],
+            science: ["sky", "rain", "sun", "star", "tree", "wind", "cloud", "moon", "earth", "bird"],
+            wonders: ["spiral", "echo", "glow", "dragon", "monument"]
+            },
+        2: {
+            everyday: ["bread", "horse", "clothes", "axe", "cloak", "coin", "barn", "forge", "well", "rope", "wheel", "cow", "sheep", "pig", "chicken", "apple", "pear", "grape","shark","banana"],
+            communal: ["village", "market", "feast", "priest", "chess", "harvest", "tavern", "letter", "banner", "field", "ship", "scale"],
+            military: ["sword", "shield", "armor", "siege", "soldier", "castle", "cigarette", "spy", "flag", "battle"],
+            science: ["herb", "plow", "calendar", "star", "map", "windmill", "medicine", "bell", "disease", "painting", "sculpting"],
+            wonders: ["troll", "labyrinth", "prophet", "spirit", "golem", "paradise", "judge", "apocalypse"]
+            },
+        3: {
+            everyday: [
+                "whiskey", "cactus", "refrigerator", "canned food", "weaving machine", 
+                "bus", "pocket watch", "typewriter", "umbrella", "sewing machine"
+            ],
+            communal: [
+                "lecture", "tax", "coup d'etat", "parliament", "guild", 
+                "industrialization", "philanthropy", "newspaper", "strikes", "inheritance"
+            ],
+            military: [
+                "poison", "mine", "arc de triomphe", "hero", "slavery",
+                "guerilla warfare", "ambush", "vassal", "blockade", "assassination"
+            ],
+            science: [
+                "pi", "theory of evolution", "philosophy", "electricity", "photography", 
+                "geology", "thermometer", "chemistry", "vaccine", "geocentrism"
+            ],
+            wonders: [
+                "arc de triomphe", "magic", "zeppelin", "clocktower", 
+                "time machine", "conservationism", "treaty", "divine right", "panorama"
+            ]
+            },
+        4: {
+            everyday: [
+                "smartphone", "stock market", "electric car", "3D printing", "freeze drying",
+                "fiber optics", "augmented reality", "renewable energy", "biometrics", "cryptocurrency"
+            ],
+            communal: [
+                "world peace", "revolution", "globalization", "surveillance","censorship",
+                "appraisal", "urbanization", "protest", "inequality", "cybersecurity"
+            ],
+            military: [
+                "autonomous drone", "cyberwarfare", "bio-weapon", "satellite", "sabotage",
+                "hacktivism", "sanctions", "EMP", "proxy war",  
+            ],
+            science: [
+                "quantum computing", "gene editing", "nanotechnology", "artificial intelligence", "climate change",
+                "synthetic biology", "space colonization", "neuroscience", "bioprinting", "fusion energy"
+            ],
+            wonders: [
+                "world heritage", "eternal hell", "singularity", "terraforming", "megacity",
+                "time capsule", "virtual reality", "black hole", "alien artifact", "mind upload"
+            ]
+            },
+        5: {
+            everyday: [
+                "quantum physics",
+                "nanobot",
+                "designer baby",
+                "biofabrication",
+                "turing test"
+            ],
+            communal: [
+                "sovereignty",
+                "liberation",
+                "international law",
+                "transhumanism",
+                "post-scarcity"
+            ],
+            military: [
+                "dyson sphere",
+                "supernova",
+                "black hole",
+                "neural network",
+            ],
+            science: [
+                "lagrange point",
+                "elementary particle",
+                "parallel universe",
+                "heat death of the universe",
+                "dark matter"
+            ],
+            wonders: [
+                "terraforming",
+                "singularity",
+                "time dilation",
+                "The Matrix"
+            ]
+            }
     };
 
-    // Each era's current deck (starts as a copy of full list)
+    const categories = ["everyday", "communal", "military", "science", "wonders"];
+    const categoryLabels = {
+        everyday: "Everyday objects",
+        communal: "Communal concepts",
+        military: "Military ideas",
+        science: "Science",
+        wonders: "Wonders"
+    };
+
+    // Decks for true draw
     let decks = {};
-    for (let i = 1; i <= 5; i++) {
-        decks[i] = [...fullEras[i]];
+    for (let era = 1; era <= 5; era++) {
+        decks[era] = {};
+        categories.forEach(cat => {
+            decks[era][cat] = [...fullEras[era][cat]];
+        });
     }
 
     let currentEra = 1;
@@ -61,27 +200,28 @@
     }
 
     function drawWords() {
-        let deck = decks[currentEra];
-
-        // If deck has less than 5, reset and shuffle
-        if (deck.length < 5) {
-            deck = [...fullEras[currentEra]];
-        }
-
-        // Shuffle deck
-        deck.sort(() => Math.random() - 0.5);
-
-        // Draw 5
-        const drawn = deck.splice(0, 5);
-
-        // Save deck back
-        decks[currentEra] = deck;
-
-        return drawn;
+        let drawnWords = [];
+        categories.forEach(cat => {
+            let deck = decks[currentEra][cat];
+            if (deck.length === 0) {
+                deck = [...fullEras[currentEra][cat]]; // reset category deck
+            }
+            deck.sort(() => Math.random() - 0.5);
+            drawnWords.push({ category: cat, word: deck.shift() });
+            decks[currentEra][cat] = deck;
+        });
+        return drawnWords;
     }
 
     function displayWords() {
-        document.getElementById("words").textContent = drawWords().join(", ");
+        const wordsDiv = document.getElementById("words");
+        wordsDiv.innerHTML = "";
+        drawWords().forEach(item => {
+            const card = document.createElement("div");
+            card.className = "word-card";
+            card.innerHTML = `<span>${categoryLabels[item.category]}:</span> ${item.word}`;
+            wordsDiv.appendChild(card);
+        });
     }
 
     document.getElementById("prevBtn").addEventListener("click", () => {
@@ -98,7 +238,6 @@
 
     document.getElementById("refreshBtn").addEventListener("click", displayWords);
 
-    // Initial render
     updateBanner();
     displayWords();
 </script>
