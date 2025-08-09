@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Era Words App</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin-top: 40px;
+    }
+    #banner {
+        font-size: 2em;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    button {
+        padding: 10px 20px;
+        margin: 10px;
+        font-size: 1em;
+        cursor: pointer;
+    }
+    #words {
+        margin: 20px 0;
+        font-size: 1.2em;
+    }
+</style>
+</head>
+<body>
+
+<div id="banner">Era #1</div>
+
+<div>
+    <button id="prevBtn">Previous Era</button>
+    <button id="nextBtn">Next Era</button>
+</div>
+
+<div id="words"></div>
+
+<button id="refreshBtn">Refresh Words</button>
+
+<script>
+    const fullEras = {
+        1: ["apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "kiwi", "lemon", "mango"],
+        2: ["car", "bike", "bus", "train", "plane", "boat", "truck", "scooter", "subway", "helicopter"],
+        3: ["dog", "cat", "bird", "fish", "horse", "rabbit", "hamster", "snake", "turtle", "frog"],
+        4: ["red", "blue", "green", "yellow", "purple", "orange", "black", "white", "pink", "brown"],
+        5: ["rock", "jazz", "blues", "pop", "hiphop", "classical", "metal", "country", "folk", "reggae"]
+    };
+
+    // Each era's current deck (starts as a copy of full list)
+    let decks = {};
+    for (let i = 1; i <= 5; i++) {
+        decks[i] = [...fullEras[i]];
+    }
+
+    let currentEra = 1;
+
+    function updateBanner() {
+        document.getElementById("banner").textContent = `Era #${currentEra}`;
+    }
+
+    function drawWords() {
+        let deck = decks[currentEra];
+
+        // If deck has less than 5, reset and shuffle
+        if (deck.length < 5) {
+            deck = [...fullEras[currentEra]];
+        }
+
+        // Shuffle deck
+        deck.sort(() => Math.random() - 0.5);
+
+        // Draw 5
+        const drawn = deck.splice(0, 5);
+
+        // Save deck back
+        decks[currentEra] = deck;
+
+        return drawn;
+    }
+
+    function displayWords() {
+        document.getElementById("words").textContent = drawWords().join(", ");
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+        currentEra = currentEra === 1 ? 5 : currentEra - 1;
+        updateBanner();
+        displayWords();
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+        currentEra = currentEra === 5 ? 1 : currentEra + 1;
+        updateBanner();
+        displayWords();
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", displayWords);
+
+    // Initial render
+    updateBanner();
+    displayWords();
+</script>
+
+</body>
+</html>
