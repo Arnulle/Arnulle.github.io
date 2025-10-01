@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Twilight Imperium Tournament Manager</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background: #111;
+      color: #eee;
+    }
+    h1 { text-align: center; }
+    .controls {
+      margin: 1rem 0;
+      text-align: center;
+    }
+  button {
+      padding: 0.5rem 1rem;
+      margin: 0.5rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #3498db;
+      color: white;
+      font-size: 1rem;
+    }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #selectedFactions {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #222;
+      border-radius: 8px;
+    }
+    #selectedFactions ul {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, auto);
+      gap: 0.5rem 1rem;
+      justify-items: center;
+      align-items: center;
+      margin: 0.5rem 0;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #selectedFactions li {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      font-size: 1.05rem;
+      min-width: 90px;
+      min-height: 70px;
+      box-sizing: border-box;
+    }
+    #selectedFactions img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      margin: 0 0 6px 0;
+      border-radius: 5px;
+    }
+    #selectedFactions img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      margin-right: 10px;
+      border-radius: 5px;
+    }
+    #chartContainer {
+      width: 90%;
+      max-width: 100vw;
+      overflow-x: auto;
+    }
+    #weightsChart {
+      width: 1200px; /* large virtual width so bars stretch; container scrolls if needed */
+      height: 300px !important;  /* 1.5x previous height */
+      margin: 1rem auto 0.5rem;
+      display: block;
+      background: #181818;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    /* Faction icon strip under chart */
+    #factionIconStrip {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: flex-start;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 0.25rem 0 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .faction-icon {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 4px;
+      transition: transform 0.15s;
+    }
+    .faction-icon:hover { transform: scale(1.1); }
+    /* Drawn list selectable */
+    #selectionList li {
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.15s, transform 0.15s;
+    }
+    #selectionList li:hover { background: #2a2a2a; }
+    #selectionList li.selected { background: #256fa1; transform: scale(1.02); }
+    #jsonPanel {
+      display: none;
+      margin-top: 1rem;
+      background: #222;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    textarea {
+      width: 100%;
+      height: 250px;
+      background: #111;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 5px;
+      padding: 0.5rem;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Twilight Imperium Tournament Manager</h1>
+
+  <div class="controls">
+    <button onclick="drawFactions()" id="drawBtn">Draw 9 Factions</button>
+    <button onclick="applySelection()" id="applyBtn" disabled>Apply Selection</button>
+    <button onclick="resetWeights()">Reset Weights</button>
+    <button onclick="toggleJSONPanel()">Manage JSON</button>
+  </div>
+
+  <div id="selectedFactions">
+    <h2>Selected Factions:</h2>
+    <ul id="selectionList"></ul>
+  </div>
+
+  <div id="chartContainer">
+    <canvas id="weightsChart"></canvas>
+  </div>
+  <div id="factionIconStrip"></div>
+
+  <!-- JSON Panel -->
+  <div id="jsonPanel">
+    <h2>Weights JSON</h2>
+    <textarea id="jsonInput"></textarea><br>
+    <button onclick="importFromTextarea()">Load JSON</button>
+    <button onclick="exportToTextarea()">Update JSON</button>
+    <button onclick="copyJSON()">Copy to Clipboard</button>
+  </div>
+
+  <script>
+    const factions = [
+      "Arborec","Barony of Letnev","Clan of Saar","Emirates of Hacan",
+      "Federation of Sol","Ghosts of Creuss","L1Z1X Mindnet","Mentak Coalition",
+      "Naalu Collective","Nekro Virus","Sardakk N'orr","Universities of Jol-Nar",
+      "Winnu","Xxcha Kingdom","Yin Brotherhood","Yssaril Tribes","Argent Flight",
+      "Empyrean","Mahact Gene-Sorcerers","Naaz-Rokha Alliance","Nomad",
+      "Titans of Ul","Vuil'raith Cabal"
+    ];
+
+    // Example placeholder images (replace with your own paths/URLs)
+    const factionImages = {
+      "Arborec": "images/Arborec.png",
+      "Barony of Letnev": "images/Letnev.png",
+      "Clan of Saar": "images/Saar.png",
+      "Emirates of Hacan": "images/Hacan.png",
+      "Federation of Sol": "images/Sol.png",
+      "Ghosts of Creuss": "images/Creuss.png",
+      "L1Z1X Mindnet": "images/L1Z1X.png",
+      "Mentak Coalition": "images/Mentak.png",
+      "Naalu Collective": "images/Naalu.png",
+      "Nekro Virus": "images/Nekro.png",
+      "Sardakk N'orr": "images/Sardakk.png",
+      "Universities of Jol-Nar": "images/JolNar.png",
+      "Winnu": "images/Winnu.png",
+      "Xxcha Kingdom": "images/Xxcha.png",
+      "Yin Brotherhood": "images/Yin.png",
+      "Yssaril Tribes": "images/Yssaril.png",
+      "Argent Flight": "images/Argent.png",
+      "Empyrean": "images/Empyrean.png",
+      "Mahact Gene-Sorcerers": "images/Mahact.png",
+      "Naaz-Rokha Alliance": "images/NaazRokha.png",
+      "Nomad": "images/Nomad.png",
+      "Titans of Ul": "images/Titans.png",
+      "Vuil'raith Cabal": "images/VuilRaith.png"
+    };
+
+    // Load any stored weights but only keep current factions; default to 1 if missing
+    (function initWeights(){
+      const stored = JSON.parse(localStorage.getItem("ti_weights") || 'null');
+      window.weights = Object.fromEntries(factions.map(f => [f, (stored && typeof stored[f] === 'number') ? stored[f] : 1]));
+    })();
+
+    // Preload icons into strip
+    function renderIconStrip() {
+      const strip = document.getElementById('factionIconStrip');
+      strip.innerHTML = '';
+      factions.forEach((f, idx) => {
+        const img = document.createElement('img');
+        img.src = factionImages[f] || 'images/default.png';
+        img.className = 'faction-icon';
+        img.title = f;
+        // Mouseover: highlight corresponding bar
+        img.addEventListener('mouseenter', () => highlightBar(idx));
+        img.addEventListener('mouseleave', () => unhighlightBar(idx));
+        strip.appendChild(img);
+      });
+    }
+    // Highlight/unhighlight bar in chart
+    function highlightBar(idx) {
+      const orig = chart.data.datasets[0].backgroundColor;
+      if (Array.isArray(orig)) {
+        chart.data.datasets[0].backgroundColor = orig.slice();
+      } else {
+        chart.data.datasets[0].backgroundColor = factions.map(() => '#3498db');
+      }
+      chart.data.datasets[0].backgroundColor[idx] = '#f1c40f'; // highlight color
+      chart.update('none');
+    }
+
+    function unhighlightBar(idx) {
+      chart.data.datasets[0].backgroundColor = factions.map(() => '#3498db');
+      chart.update('none');
+    }
+    renderIconStrip();
+
+    const ctx = document.getElementById('weightsChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: factions,
+        datasets: [{
+          label: 'Pick Probability (%)',
+          data: getProbabilities(),
+          backgroundColor: factions.map(() => '#3498db')
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        layout: { padding: { bottom: 10, top: 10, left: 10, right: 10 } },
+        plugins: {
+          legend: { labels: { color: "#eee", font: { size: 16 } } }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#eee", font: { size: 14 }, autoSkip: false }
+          },
+          y: {
+            beginAtZero: true,
+            // max will be set dynamically to the current highest probability
+            ticks: {
+              color: "#eee",
+              font: { size: 12 },
+              callback: value => value + "%"
+            }
+          }
+        }
+      }
+    });
+
+    function saveWeights() {
+      localStorage.setItem("ti_weights", JSON.stringify(weights));
+    }
+
+    function getProbabilities() {
+      const total = Object.values(weights).reduce((a,b)=>a+b,0);
+      return factions.map(f => (weights[f] / total) * 100);
+    }
+
+    function weightedRandomPick(arr, weightsMap, count) {
+      const picks = [];
+      const used = new Set();
+      while (picks.length < count) {
+        let total = arr.reduce((sum,f)=>sum+weightsMap[f],0);
+        let r = Math.random() * total;
+        let cum = 0;
+        for (let f of arr) {
+          cum += weightsMap[f];
+          if (r <= cum) {
+            if (!used.has(f)) {
+              picks.push(f);
+              used.add(f);
+            }
+            break;
+          }
+        }
+      }
+      return picks;
+    }
+
+    let currentDraw = [];
+    let selectedSet = new Set();
+
+    function drawFactions() {
+      currentDraw = weightedRandomPick(factions, weights, 9);
+      selectedSet.clear();
+      const list = document.getElementById('selectionList');
+      list.innerHTML = '';
+      currentDraw.forEach(f => {
+        const li = document.createElement('li');
+        li.dataset.faction = f;
+        const img = document.createElement('img');
+        img.src = factionImages[f] || 'images/default.png';
+        img.alt = f;
+        li.appendChild(img);
+        li.appendChild(document.createTextNode(f));
+        li.addEventListener('click', () => toggleSelection(f, li));
+        list.appendChild(li);
+      });
+      document.getElementById('applyBtn').disabled = true;
+    }
+
+    function toggleSelection(faction, liEl) {
+      if (selectedSet.has(faction)) {
+        selectedSet.delete(faction);
+        liEl.classList.remove('selected');
+      } else {
+        selectedSet.add(faction);
+        liEl.classList.add('selected');
+      }
+      document.getElementById('applyBtn').disabled = selectedSet.size === 0;
+    }
+
+    function applySelection() {
+      if (selectedSet.size === 0) return;
+      // Halve weight of each selected faction; others unchanged
+      selectedSet.forEach(f => {
+        weights[f] = weights[f] / 2;
+        if (weights[f] < 0.0001) weights[f] = 0.0001; // prevent zero collapse
+      });
+      updateChart();
+      saveWeights();
+      document.getElementById('applyBtn').disabled = true;
+    }
+
+    function updateChart() {
+      const probs = getProbabilities();
+      chart.data.datasets[0].data = probs;
+      chart.data.datasets[0].backgroundColor = factions.map(() => '#3498db');
+      const maxVal = Math.max(...probs);
+      // Small headroom so tallest bar isn't cut off (5% of max or at least 1 unit if max tiny)
+      const headroom = maxVal * 0.05;
+      chart.options.scales.y.max = maxVal === 0 ? 1 : +(maxVal + headroom).toFixed(2);
+      chart.update();
+    }
+
+    // Set initial dynamic max
+    updateChart();
+
+    function resetWeights() {
+      weights = Object.fromEntries(factions.map(f=>[f,1]));
+      updateChart();
+      document.getElementById("selectionList").innerHTML = "";
+      saveWeights();
+      selectedSet.clear();
+      currentDraw = [];
+      document.getElementById('applyBtn').disabled = true;
+    }
+
+    // JSON Panel
+    function toggleJSONPanel() {
+      const panel = document.getElementById("jsonPanel");
+      const textarea = document.getElementById("jsonInput");
+      if (panel.style.display === "none") {
+        panel.style.display = "block";
+        textarea.value = JSON.stringify(weights, null, 2);
+      } else {
+        panel.style.display = "none";
+      }
+    }
+
+    function importFromTextarea() {
+      const textarea = document.getElementById("jsonInput");
+      try {
+        const parsed = JSON.parse(textarea.value);
+        if (Object.keys(parsed).length === factions.length && factions.every(f=>f in parsed)) {
+          weights = parsed;
+          updateChart();
+          saveWeights();
+          alert("Weights imported!");
+        } else {
+          alert("Invalid JSON format (must include all factions)");
+        }
+      } catch {
+        alert("Invalid JSON");
+      }
+    }
+
+    function exportToTextarea() {
+      const textarea = document.getElementById("jsonInput");
+      textarea.value = JSON.stringify(weights, null, 2);
+    }
+
+    function copyJSON() {
+      const textarea = document.getElementById("jsonInput");
+      textarea.select();
+      document.execCommand("copy");
+      alert("JSON copied to clipboard!");
+    }
+  </script>
+</body>
+</html>
