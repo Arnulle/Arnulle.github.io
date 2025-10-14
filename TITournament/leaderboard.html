@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Leaderboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 2rem; }
     h1 { text-align: center; }
@@ -10,78 +11,188 @@
     input, button { font-size: 1rem; margin: 0.2rem; padding: 0.4rem 0.8rem; border-radius: 5px; border: none; }
     button { background: #3498db; color: #fff; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #playerList { margin: 2rem auto; max-width: 400px; background: #222; border-radius: 8px; padding: 1rem; }
-    table { width: 100%; border-collapse: collapse; }
+    #playerList { margin: 2rem auto; max-width: 1000px; background: #222; border-radius: 8px; padding: 1rem; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
     th, td { padding: 0.5rem; text-align: center; }
     th { background: #333; }
     td { background: #181818; }
     .score-btn { padding: 0.2rem 0.6rem; margin: 0 0.2rem; font-size: 1.1rem; }
     .remove-btn { background: #e74c3c; color: #fff; }
-    .nav-link { color: #3498db; text-decoration: underline; cursor: pointer; margin-bottom: 1rem; display: inline-block; }
+    /* Back button styled same as main page buttons */
+    .back-btn {
+      padding: 0.5rem 1rem;
+      margin: 0.5rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #3498db;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .back-btn:hover { filter: brightness(1.1); }
+    #chartWrap { max-width: 1000px; margin: 1.5rem auto; background: #222; border-radius: 8px; padding: 1rem; }
+    #cumulativeChart { width: 100%; height: 360px; }
   </style>
 </head>
 <body>
   <h1>Leaderboard</h1>
   <div class="controls">
-    <input type="text" id="playerName" placeholder="Player name" />
-    <button onclick="addPlayer()">Add Player</button>
-    <span class="nav-link" onclick="goToMain()">Back to Tournament</span>
+    <button class="back-btn" onclick="goToMain()">Back to Tournament</button>
   </div>
   <div id="playerList"></div>
+  <div id="chartWrap">
+    <canvas id="cumulativeChart"></canvas>
+  </div>
+
   <script>
-    function getPlayers() {
-      return JSON.parse(localStorage.getItem('ti_leaderboard') || '[]');
-    }
-    function savePlayers(players) {
-      localStorage.setItem('ti_leaderboard', JSON.stringify(players));
-    }
+    // Hardcoded players including previously entered scores.
+    const PLAYERS = [
+      { name: 'Hans',    perGame: [6, 0, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Xxcha Kingdom', '', '', '', '', '', '', '', '', ''] },
+      { name: 'Martin',  perGame: [8, 0, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Federation of Sol', '', '', '', '', '', '', '', '', ''] },
+      { name: 'Rasmus',  perGame: [11, 0, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Titans of Ul', '', '', '', '', '', '', '', '', ''] },
+      { name: 'Asbjørn', perGame: [9, 0, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Empyrean', '', '', '', '', '', '', '', '', ''] },
+      { name: 'Arnulf',  perGame: [9, 0, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Emirates of Hacan', '', '', '', '', '', '', '', '', ''] },
+      { name: 'Sebastian', perGame: [9, 0, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Universities of Jol-Nar', '', '', '', '', '', '', '', '', ''] }
+    ];
+
+    // Faction icon mapping
+    const factionImages = {
+      "Arborec": "images/Arborec.png",
+      "Barony of Letnev": "images/Letnev.png",
+      "Clan of Saar": "images/Saar.png",
+      "Emirates of Hacan": "images/Hacan.png",
+      "Federation of Sol": "images/Sol.png",
+      "Ghosts of Creuss": "images/Creuss.png",
+      "L1Z1X Mindnet": "images/L1Z1X.png",
+      "Mentak Coalition": "images/Mentak.png",
+      "Naalu Collective": "images/Naalu.png",
+      "Nekro Virus": "images/Nekro.png",
+      "Sardakk N'orr": "images/Sardakk.png",
+      "Universities of Jol-Nar": "images/JolNar.png",
+      "Winnu": "images/Winnu.png",
+      "Xxcha Kingdom": "images/Xxcha.png",
+      "Yin Brotherhood": "images/Yin.png",
+      "Yssaril Tribes": "images/Yssaril.png",
+      "Argent Flight": "images/Argent.png",
+      "Empyrean": "images/Empyrean.png",
+      "Mahact Gene-Sorcerers": "images/Mahact.png",
+      "Naaz-Rokha Alliance": "images/NaazRokha.png",
+      "Nomad": "images/Nomad.png",
+      "Titans of Ul": "images/Titans.png",
+      "Vuil'raith Cabal": "images/VuilRaith.png"
+    };
+
     function renderPlayers() {
-      const players = getPlayers();
+      const players = PLAYERS;
       const div = document.getElementById('playerList');
-      if (players.length === 0) {
-        div.innerHTML = '<p>No players yet.</p>';
-        return;
-      }
-      let html = '<table><tr><th>Player</th><th>Score</th><th>Adjust</th><th>Remove</th></tr>';
-      players.forEach((p, idx) => {
-        html += `<tr><td>${p.name}</td><td>${p.score}</td><td>
-          <button class='score-btn' onclick='changeScore(${idx},1)'>+1</button>
-          <button class='score-btn' onclick='changeScore(${idx},-1)'>-1</button>
-        </td><td><button class='remove-btn' onclick='removePlayer(${idx})'>Remove</button></td></tr>`;
+      if (!players.length) { div.innerHTML = '<p>No players yet.</p>'; return; }
+      let html = '<table><tr><th>Player</th>';
+      for (let i = 1; i <= 10; i++) html += `<th>Game ${i}</th>`;
+      html += '</tr>';
+      players.forEach(p => {
+        html += `<tr><td>${p.name}</td>`;
+        for (let g = 0; g < 10; g++) {
+          const pts = p.perGame[g];
+          const fac = p.factions[g];
+            let cell = '';
+            if (fac && factionImages[fac]) {
+              cell += `<img src="${factionImages[fac]}" alt="${fac}" title="${fac}" style="width:28px;height:28px;display:block;margin:0 auto 2px;">`;
+            }
+            if (pts !== 0 || g === 0) cell += `<div>${pts}</div>`;
+            html += `<td>${cell}</td>`;
+        }
+        html += '</tr>';
       });
       html += '</table>';
       div.innerHTML = html;
     }
-    function addPlayer() {
-      const nameInput = document.getElementById('playerName');
-      const name = nameInput.value.trim();
-      if (!name) return;
-      let players = getPlayers();
-      if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-        alert('Player already exists!');
-        return;
+
+    function getLastCompletedGameIndex() {
+      let last = -1;
+      for (let g = 0; g < 10; g++) {
+        for (const p of PLAYERS) {
+          if (p.perGame[g] && p.perGame[g] !== 0) { last = g; break; }
+        }
       }
-      players.push({ name, score: 0 });
-      savePlayers(players);
-      nameInput.value = '';
-      renderPlayers();
+      if (last === -1) return -1; // no games yet
+      return last;
     }
-    function changeScore(idx, delta) {
-      let players = getPlayers();
-      players[idx].score += delta;
-      savePlayers(players);
-      renderPlayers();
+
+    function renderFactionBarChart() {
+      const factionTotals = {};
+      const factionCounts = {};
+      const last = getLastCompletedGameIndex();
+      const maxGame = last === -1 ? 0 : last; // if none played yet, consider only game 0 (all zeros)
+      PLAYERS.forEach(p => {
+        for (let i = 0; i <= maxGame; i++) {
+          const fac = p.factions[i];
+          const pts = p.perGame[i];
+          if (fac && factionImages[fac]) {
+            factionTotals[fac] = (factionTotals[fac] || 0) + pts;
+            factionCounts[fac] = (factionCounts[fac] || 0) + 1;
+          }
+        }
+      });
+      const allFacs = Object.keys(factionImages);
+      const avgs = allFacs.map(f => factionCounts[f] ? factionTotals[f] / factionCounts[f] : 0);
+      const ctx = document.getElementById('factionBarChart').getContext('2d');
+      if (window.factionBarChart) window.factionBarChart.destroy();
+      window.factionBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: allFacs, datasets: [{ label: 'Average Points', data: avgs, backgroundColor: '#3498db' }] },
+        options: {
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}` } } },
+          scales: { x: { ticks: { color: '#eee' } }, y: { beginAtZero: true, ticks: { color: '#eee' } } }
+        }
+      });
     }
-    function removePlayer(idx) {
-      let players = getPlayers();
-      players.splice(idx, 1);
-      savePlayers(players);
-      renderPlayers();
+
+    function renderChart() {
+      const ctx = document.getElementById('cumulativeChart').getContext('2d');
+      const last = getLastCompletedGameIndex();
+      const lastIdx = last === -1 ? 0 : last; // ensure at least first column
+      const labels = Array.from({ length: lastIdx + 1 }, (_, i) => `Game ${i+1}`);
+      const palette = [
+        '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f',
+        '#e67e22', '#1abc9c', '#e84393', '#16a085', '#d35400',
+        '#34495e', '#8e44ad'
+      ];
+      const datasets = PLAYERS.map((p, idx) => {
+        const cum = [];
+        let sum = 0;
+        for (let i = 0; i <= lastIdx; i++) { sum += (p.perGame[i] || 0); cum.push(sum); }
+        const color = palette[idx % palette.length];
+        return {
+          label: p.name,
+          data: cum,
+          borderColor: color,
+          backgroundColor: color,
+          tension: 0.25,
+          fill: false,
+        };
+      });
+      if (window.cumChart) window.cumChart.destroy();
+      window.cumChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#eee' } },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: { ticks: { color: '#eee' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+            y: { beginAtZero: true, ticks: { color: '#eee' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+          }
+        }
+      });
     }
-    function goToMain() {
-      window.location.href = 'index.html';
-    }
+    function goToMain() { window.location.href = 'index.html'; }
+
     renderPlayers();
+    renderChart();
   </script>
 </body>
 </html>
