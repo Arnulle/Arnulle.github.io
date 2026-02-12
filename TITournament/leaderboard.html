@@ -53,7 +53,7 @@
       { name: 'Asbjørn', perGame: [9, 8, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Empyrean', 'Mentak Coalition', '', '', '', '', '', '', '', ''] },
       { name: 'Arnulf',  perGame: [9, 7, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Emirates of Hacan', 'Emirates of Hacan', '', '', '', '', '', '', '', ''] },
       { name: 'Sebastian', perGame: [9, 9, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['Universities of Jol-Nar', 'Sardakk N\'orr', '', '', '', '', '', '', '', ''] },
-      { name: 'Markus', perGame: [0, 5, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['', 'Arborec', '', '', '', '', '', '', '', ''] },
+      { name: 'Markus', perGame: [0, 6, 0, 0, 0, 0, 0, 0, 0, 0], factions: ['', 'Arborec', '', '', '', '', '', '', '', ''] },
     ];
 
     // Faction icon mapping
@@ -89,11 +89,13 @@
       if (!players.length) { div.innerHTML = '<p>No players yet.</p>'; return; }
       let html = '<table><tr><th>Player</th>';
       for (let i = 1; i <= 10; i++) html += `<th>Game ${i}</th>`;
-      html += '</tr>';
+      html += '<th>Total</th></tr>';
       players.forEach(p => {
         html += `<tr><td>${p.name}</td>`;
+        // prefer filled scores (displayPerGame) when available
+        const source = (p.displayPerGame && p.displayPerGame.length) ? p.displayPerGame : p.perGame;
         for (let g = 0; g < 10; g++) {
-          const pts = p.perGame[g];
+          const pts = source[g];
           const fac = p.factions[g];
             let cell = '';
             if (fac && factionImages[fac]) {
@@ -102,6 +104,9 @@
             if (pts !== 0 || g === 0) cell += `<div>${pts}</div>`;
             html += `<td>${cell}</td>`;
         }
+        // compute total from displayed (filled) scores
+        const total = source.reduce((acc, v) => acc + (v || 0), 0);
+        html += `<td><strong>${total}</strong></td>`;
         html += '</tr>';
       });
       html += '</table>';
@@ -125,9 +130,10 @@
       const last = getLastCompletedGameIndex();
       const maxGame = last === -1 ? 0 : last; // if none played yet, consider only game 0 (all zeros)
       PLAYERS.forEach(p => {
+        const source = (p.displayPerGame && p.displayPerGame.length) ? p.displayPerGame : p.perGame;
         for (let i = 0; i <= maxGame; i++) {
           const fac = p.factions[i];
-          const pts = p.perGame[i];
+          const pts = source[i] || 0;
           if (fac && factionImages[fac]) {
             factionTotals[fac] = (factionTotals[fac] || 0) + pts;
             factionCounts[fac] = (factionCounts[fac] || 0) + 1;
@@ -161,7 +167,9 @@
       const datasets = PLAYERS.map((p, idx) => {
         const cum = [];
         let sum = 0;
-        for (let i = 0; i <= lastIdx; i++) { sum += (p.perGame[i] || 0); cum.push(sum); }
+        // use filled scores if available (filled for games up to last)
+        const source = (p.displayPerGame && p.displayPerGame.length) ? p.displayPerGame : p.perGame;
+        for (let i = 0; i <= lastIdx; i++) { sum += (source[i] || 0); cum.push(sum); }
         const color = palette[idx % palette.length];
         return {
           label: p.name,
@@ -192,6 +200,37 @@
     }
     function goToMain() { window.location.href = 'index.html'; }
 
+    // Fill missing scores (for games where at least one player has points)
+    function fillMissingScores() {
+      const last = getLastCompletedGameIndex();
+      if (last === -1) {
+        // nothing played yet — no fills
+        PLAYERS.forEach(p => { p.displayPerGame = p.perGame.slice(); });
+        return;
+      }
+      PLAYERS.forEach(p => {
+        let sum = 0, count = 0;
+        for (let i = 0; i <= last; i++) {
+          const v = p.perGame[i];
+          if (v && v !== 0) { sum += v; count++; }
+        }
+        const avg = count > 0 ? Math.round(sum / count) : 0;
+        // build displayPerGame for all 10 games; for games up to `last` replace 0 with avg
+        p.displayPerGame = [];
+        for (let i = 0; i < 10; i++) {
+          if (i <= last) {
+            const v = p.perGame[i];
+            if (v && v !== 0) p.displayPerGame.push(v);
+            else p.displayPerGame.push(count > 0 ? avg : 0);
+          } else {
+            // future games: keep original value (likely 0)
+            p.displayPerGame.push(p.perGame[i] || 0);
+          }
+        }
+      });
+    }
+
+    fillMissingScores();
     renderPlayers();
     renderChart();
   </script>
