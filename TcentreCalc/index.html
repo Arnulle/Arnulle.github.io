@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>T Centre Calculator</title>
+	<style>
+		:root {
+			color-scheme: dark;
+			--bg: #08111f;
+			--panel: rgba(12, 22, 40, 0.9);
+			--panel-2: rgba(19, 33, 58, 0.95);
+			--text: #edf4ff;
+			--muted: #9fb3cc;
+			--accent: #69d2ff;
+			--accent-2: #87f2b0;
+			--border: rgba(146, 181, 219, 0.22);
+			--error: #ff8f8f;
+			--shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			color: var(--text);
+			background:
+				radial-gradient(circle at top left, rgba(105, 210, 255, 0.18), transparent 28%),
+				radial-gradient(circle at right 20% bottom 10%, rgba(135, 242, 176, 0.12), transparent 24%),
+				linear-gradient(145deg, #07101d 0%, #0b1627 45%, #08111f 100%);
+		}
+
+		.shell {
+			width: min(1100px, calc(100vw - 32px));
+			margin: 0 auto;
+			padding: 36px 0 48px;
+		}
+
+		.hero {
+			display: grid;
+			gap: 14px;
+			margin-bottom: 24px;
+		}
+
+		.eyebrow {
+			display: inline-flex;
+			width: fit-content;
+			align-items: center;
+			gap: 8px;
+			padding: 8px 12px;
+			border: 1px solid var(--border);
+			border-radius: 999px;
+			color: var(--muted);
+			background: rgba(255, 255, 255, 0.03);
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+			font-size: 0.78rem;
+		}
+
+		h1 {
+			margin: 0;
+			font-size: clamp(2rem, 4vw, 3.5rem);
+			line-height: 1.05;
+			letter-spacing: -0.03em;
+		}
+
+		.intro {
+			margin: 0;
+			max-width: 70ch;
+			color: var(--muted);
+			font-size: 1.02rem;
+			line-height: 1.6;
+		}
+
+		.status {
+			margin-top: 8px;
+			padding: 12px 14px;
+			border: 1px solid var(--border);
+			border-radius: 14px;
+			background: rgba(255, 255, 255, 0.035);
+			color: var(--muted);
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 16px;
+			margin-top: 22px;
+		}
+
+		.card {
+			padding: 18px;
+			border: 1px solid var(--border);
+			border-radius: 20px;
+			background: linear-gradient(180deg, var(--panel), var(--panel-2));
+			box-shadow: var(--shadow);
+			backdrop-filter: blur(10px);
+		}
+
+		.card label {
+			display: block;
+			margin-bottom: 10px;
+			font-size: 0.92rem;
+			font-weight: 700;
+			letter-spacing: 0.02em;
+		}
+
+		.field-row {
+			display: flex;
+			gap: 12px;
+			align-items: center;
+		}
+
+		input[type="number"] {
+			flex: 1;
+			min-width: 0;
+			padding: 14px 14px;
+			border: 1px solid rgba(146, 181, 219, 0.28);
+			border-radius: 14px;
+			background: rgba(5, 11, 20, 0.8);
+			color: var(--text);
+			font-size: 1.05rem;
+			outline: none;
+		}
+
+		input[type="number"]:focus {
+			border-color: var(--accent);
+			box-shadow: 0 0 0 4px rgba(105, 210, 255, 0.12);
+		}
+
+		.suffix {
+			min-width: 92px;
+			text-align: right;
+			color: var(--muted);
+			font-size: 0.9rem;
+		}
+
+		.hint {
+			margin-top: 10px;
+			color: var(--muted);
+			font-size: 0.88rem;
+			line-height: 1.45;
+			min-height: 2.5em;
+		}
+
+		.output {
+			margin-top: 18px;
+			padding: 18px;
+			border: 1px solid var(--border);
+			border-radius: 20px;
+			background: rgba(255, 255, 255, 0.035);
+		}
+
+		.output-grid {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 14px;
+			margin-top: 14px;
+		}
+
+		.stat {
+			padding: 14px;
+			border-radius: 16px;
+			background: rgba(8, 17, 31, 0.72);
+			border: 1px solid rgba(146, 181, 219, 0.16);
+		}
+
+		.stat .name {
+			display: block;
+			color: var(--muted);
+			font-size: 0.82rem;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			margin-bottom: 8px;
+		}
+
+		.stat .value {
+			font-size: 1.5rem;
+			font-weight: 700;
+			letter-spacing: -0.02em;
+			word-break: break-word;
+		}
+
+		.stat .meta {
+			display: block;
+			margin-top: 6px;
+			color: var(--muted);
+			font-size: 0.85rem;
+		}
+
+		.error {
+			color: var(--error);
+		}
+
+		.footer-note {
+			margin-top: 14px;
+			color: var(--muted);
+			font-size: 0.85rem;
+		}
+
+		@media (max-width: 860px) {
+			.grid, .output-grid { grid-template-columns: 1fr; }
+		}
+	</style>
+</head>
+<body>
+	<main class="shell">
+		<section class="hero">
+			<div class="eyebrow">T Centre calculator</div>
+			<h1>Arnulf's unofficial T-centre density calculator</h1>
+			<p class="intro">
+				Enter any one value to compute the other two. based on results of:
+				https://doi.org/10.1002/adom.71387 .
+				emitter density is derived from PL amplitude using linear conversion.
+			</p>
+			<div id="status" class="status">Loading table data...</div>
+		</section>
+
+		<section class="grid" aria-label="inputs">
+			<div class="card">
+				<label for="temperatureInput">Annealing temperature</label>
+				<div class="field-row">
+					<input id="temperatureInput" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 512.5" />
+					<div class="suffix">°C</div>
+				</div>
+				<div class="hint" id="temperatureHint">Enter a temperature to derive PL amplitude and emitter density.</div>
+			</div>
+
+			<div class="card">
+				<label for="amplitudeInput">PL signal amplitude</label>
+				<div class="field-row">
+					<input id="amplitudeInput" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 6000" />
+					<div class="suffix">counts/s</div>
+				</div>
+				<div class="hint" id="amplitudeHint">Enter a PL amplitude to derive temperature and emitter density.</div>
+			</div>
+
+			<div class="card">
+				<label for="densityInput">Emitter density</label>
+				<div class="field-row">
+					<input id="densityInput" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 21.4" />
+					<div class="suffix">μ m^{-2}</div>
+				</div>
+				<div class="hint" id="densityHint">Enter an emitter density to derive temperature and PL amplitude.</div>
+			</div>
+		</section>
+
+		<section class="output" aria-label="results">
+			<strong>Current result</strong>
+			<div class="output-grid">
+				<div class="stat">
+					<span class="name">Annealing temperature</span>
+					<span class="value" id="temperatureValue">-</span>
+					<span class="meta" id="temperatureMeta">Waiting for input</span>
+				</div>
+				<div class="stat">
+					<span class="name">PL amplitude</span>
+					<span class="value" id="amplitudeValue">-</span>
+					<span class="meta" id="amplitudeMeta">Waiting for input</span>
+				</div>
+				<div class="stat">
+					<span class="name">Emitter density</span>
+					<span class="value" id="densityValue">-</span>
+					<span class="meta" id="densityMeta">Waiting for input</span>
+				</div>
+			</div>
+			<div class="footer-note" id="footnote">
+				Results use linear interpolation between table records and linear extrapolation outside the recorded temperature range of 390 to 580 °C.
+			</div>
+		</section>
+	</main>
+
+	<script>
+		const DATA_FILE = "T_center_amplitude_vs_temperature.json";
+	    const FALLBACK_CONVERSION_FACTOR = 0.00232142857;
+		const DECIMALS = {
+			temperature: 1,
+			amplitude: 2,
+			density: 3
+		};
+
+		const inputs = {
+			temperature: document.getElementById("temperatureInput"),
+			amplitude: document.getElementById("amplitudeInput"),
+			density: document.getElementById("densityInput")
+		};
+
+		const outputs = {
+			temperature: document.getElementById("temperatureValue"),
+			amplitude: document.getElementById("amplitudeValue"),
+			density: document.getElementById("densityValue"),
+			temperatureMeta: document.getElementById("temperatureMeta"),
+			amplitudeMeta: document.getElementById("amplitudeMeta"),
+			densityMeta: document.getElementById("densityMeta")
+		};
+
+		const hints = {
+			temperature: document.getElementById("temperatureHint"),
+			amplitude: document.getElementById("amplitudeHint"),
+			density: document.getElementById("densityHint")
+		};
+
+		const status = document.getElementById("status");
+		let dataModel = null;
+		let updateLock = false;
+
+		function formatNumber(value, kind) {
+			if (!Number.isFinite(value)) {
+				return "-";
+			}
+			return value.toFixed(DECIMALS[kind]);
+		}
+
+		function averageByTemperature(records) {
+			const grouped = new Map();
+			for (const record of records) {
+				const temperature = Number(record.annealing_temperature_C);
+				const amplitude = Number(record.amplitude_counts_per_s);
+				if (!Number.isFinite(temperature) || !Number.isFinite(amplitude)) {
+					continue;
+				}
+				const existing = grouped.get(temperature);
+				if (existing) {
+					existing.totalAmplitude += amplitude;
+					existing.count += 1;
+				} else {
+					grouped.set(temperature, {
+						temperature,
+						totalAmplitude: amplitude,
+						count: 1
+					});
+				}
+			}
+
+			return Array.from(grouped.values())
+				.map((entry) => ({
+					temperature: entry.temperature,
+					amplitude: entry.totalAmplitude / entry.count,
+					sampleCount: entry.count
+				}))
+				.sort((left, right) => left.temperature - right.temperature);
+		}
+
+		function interpolate(points, x, xKey, yKey) {
+			if (!points.length) {
+				return NaN;
+			}
+			if (points.length === 1) {
+				return points[0][yKey];
+			}
+
+			const ordered = points.slice().sort((left, right) => left[xKey] - right[xKey]);
+			if (x <= ordered[0][xKey]) {
+				return lerpPoint(ordered[0], ordered[1], x, xKey, yKey);
+			}
+
+			const lastIndex = ordered.length - 1;
+			if (x >= ordered[lastIndex][xKey]) {
+				return lerpPoint(ordered[lastIndex - 1], ordered[lastIndex], x, xKey, yKey);
+			}
+
+			for (let index = 0; index < ordered.length - 1; index += 1) {
+				const left = ordered[index];
+				const right = ordered[index + 1];
+				if (x >= left[xKey] && x <= right[xKey]) {
+					return lerpPoint(left, right, x, xKey, yKey);
+				}
+			}
+
+			return NaN;
+		}
+
+		function lerpPoint(left, right, x, xKey, yKey) {
+			const x0 = left[xKey];
+			const x1 = right[xKey];
+			const y0 = left[yKey];
+			const y1 = right[yKey];
+			if (x1 === x0) {
+				return y0;
+			}
+			const ratio = (x - x0) / (x1 - x0);
+			return y0 + ratio * (y1 - y0);
+		}
+
+		function invertInterpolation(points, y, xKey, yKey) {
+			if (!points.length) {
+				return NaN;
+			}
+			if (points.length === 1) {
+				return points[0][xKey];
+			}
+
+			const ordered = points.slice().sort((left, right) => left[yKey] - right[yKey]);
+			if (y <= ordered[0][yKey]) {
+				return inverseLerpPoint(ordered[0], ordered[1], y, xKey, yKey);
+			}
+
+			const lastIndex = ordered.length - 1;
+			if (y >= ordered[lastIndex][yKey]) {
+				return inverseLerpPoint(ordered[lastIndex - 1], ordered[lastIndex], y, xKey, yKey);
+			}
+
+			for (let index = 0; index < ordered.length - 1; index += 1) {
+				const left = ordered[index];
+				const right = ordered[index + 1];
+				if (y >= left[yKey] && y <= right[yKey]) {
+					return inverseLerpPoint(left, right, y, xKey, yKey);
+				}
+			}
+
+			return NaN;
+		}
+
+		function inverseLerpPoint(left, right, y, xKey, yKey) {
+			const y0 = left[yKey];
+			const y1 = right[yKey];
+			const x0 = left[xKey];
+			const x1 = right[xKey];
+			if (y1 === y0) {
+				return x0;
+			}
+			const ratio = (y - y0) / (y1 - y0);
+			return x0 + ratio * (x1 - x0);
+		}
+
+		function readNumericInput(input) {
+			const value = input.value.trim();
+			if (value === "") {
+				return null;
+			}
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : NaN;
+		}
+
+		function setStatus(message, isError = false) {
+			status.textContent = message;
+			status.classList.toggle("error", isError);
+		}
+
+		function clearOutputs() {
+			outputs.temperature.textContent = "-";
+			outputs.amplitude.textContent = "-";
+			outputs.density.textContent = "-";
+			outputs.temperatureMeta.textContent = "Waiting for input";
+			outputs.amplitudeMeta.textContent = "Waiting for input";
+			outputs.densityMeta.textContent = "Waiting for input";
+		}
+
+		function updateHints(sourceKind, sourceValue, result) {
+			const range = dataModel.temperatureRange;
+			const amplitudeRange = dataModel.amplitudeRange;
+			const densityRange = dataModel.densityRange;
+			const sourceLabel = sourceKind === "temperature" ? "temperature" : sourceKind === "amplitude" ? "PL amplitude" : "emitter density";
+
+			hints.temperature.textContent = sourceKind === "temperature"
+				? `Used ${formatNumber(sourceValue, "temperature")} °C as the input. The table spans ${formatNumber(range.min, "temperature")} to ${formatNumber(range.max, "temperature")} °C.`
+				: `Derived from ${sourceLabel}. The table spans ${formatNumber(range.min, "temperature")} to ${formatNumber(range.max, "temperature")} °C.`;
+			hints.amplitude.textContent = sourceKind === "amplitude"
+				? `Used ${formatNumber(sourceValue, "amplitude")} counts/s as the input. The recorded amplitude range is ${formatNumber(amplitudeRange.min, "amplitude")} to ${formatNumber(amplitudeRange.max, "amplitude")} counts/s.`
+				: `Derived via interpolation from temperature and then converted to density with the JSON ratio.`;
+			hints.density.textContent = sourceKind === "density"
+				? `Used ${formatNumber(sourceValue, "density")} emitters as the input. The derived PL amplitude is ${formatNumber(result.amplitude, "amplitude")} counts/s.`
+				: `Derived from PL amplitude using the file's conversion factor.`;
+
+			outputs.temperatureMeta.textContent = `Table range: ${formatNumber(range.min, "temperature")} to ${formatNumber(range.max, "temperature")} °C`;
+			outputs.amplitudeMeta.textContent = `Table range: ${formatNumber(amplitudeRange.min, "amplitude")} to ${formatNumber(amplitudeRange.max, "amplitude")} counts/s`;
+			outputs.densityMeta.textContent = `Range from factor: ${formatNumber(densityRange.min, "density")} to ${formatNumber(densityRange.max, "density")} emitters`;
+		}
+
+		function computeFromTemperature(temperature) {
+			const amplitude = interpolate(dataModel.amplitudeCurve, temperature, "temperature", "amplitude");
+			const density = amplitude * dataModel.conversionFactor;
+			return { temperature, amplitude, density };
+		}
+
+		function computeFromAmplitude(amplitude) {
+			const temperature = invertInterpolation(dataModel.amplitudeCurve, amplitude, "temperature", "amplitude");
+			const density = amplitude * dataModel.conversionFactor;
+			return { temperature, amplitude, density };
+		}
+
+		function computeFromDensity(density) {
+			const amplitude = density / dataModel.conversionFactor;
+			const temperature = invertInterpolation(dataModel.amplitudeCurve, amplitude, "temperature", "amplitude");
+			return { temperature, amplitude, density };
+		}
+
+		function renderResults(result) {
+			outputs.temperature.textContent = formatNumber(result.temperature, "temperature");
+			outputs.amplitude.textContent = formatNumber(result.amplitude, "amplitude");
+			outputs.density.textContent = formatNumber(result.density, "density");
+		}
+
+		function recalculate(sourceKind) {
+			if (!dataModel || updateLock) {
+				return;
+			}
+
+			const sourceInput = inputs[sourceKind];
+			const value = readNumericInput(sourceInput);
+
+			if (value === null) {
+				clearOutputs();
+				setStatus("Enter a value in any one field to calculate the other two.");
+				return;
+			}
+
+			if (Number.isNaN(value)) {
+				setStatus(`The ${sourceKind} input is not a valid number.`, true);
+				return;
+			}
+
+			const result = sourceKind === "temperature"
+				? computeFromTemperature(value)
+				: sourceKind === "amplitude"
+					? computeFromAmplitude(value)
+					: computeFromDensity(value);
+
+			updateLock = true;
+			inputs.temperature.value = sourceKind === "temperature" ? value : formatNumber(result.temperature, "temperature");
+			inputs.amplitude.value = sourceKind === "amplitude" ? value : formatNumber(result.amplitude, "amplitude");
+			inputs.density.value = sourceKind === "density" ? value : formatNumber(result.density, "density");
+			updateLock = false;
+
+			renderResults(result);
+			updateHints(sourceKind, value, result);
+			setStatus(`Loaded ${dataModel.recordCount} records from the JSON table. Values are interpolated linearly and extrapolated at the ends.`);
+		}
+
+		function wireInput(kind) {
+			const input = inputs[kind];
+			input.addEventListener("input", () => recalculate(kind));
+		}
+
+		async function loadModel() {
+			const requestUrl = new URL(DATA_FILE, window.location.href);
+			requestUrl.searchParams.set("v", String(Date.now()));
+			const response = await fetch(requestUrl.toString(), { cache: "no-store" });
+			if (!response.ok) {
+				throw new Error(`Could not load ${DATA_FILE}: ${response.status} ${response.statusText}`);
+			}
+
+			const payload = await response.json();
+			const records = Array.isArray(payload.records) ? payload.records : [];
+			const amplitudeCurve = averageByTemperature(records);
+			if (amplitudeCurve.length < 2) {
+				throw new Error("The JSON file needs at least two valid records.");
+			}
+
+			const amplitudes = amplitudeCurve.map((entry) => entry.amplitude);
+			const temperatures = amplitudeCurve.map((entry) => entry.temperature);
+			const factor = Number(
+				payload.PL_to_emitter_density_conversion_factor ??
+				payload.pl_to_emitter_density_conversion_factor ??
+				payload.conversion_factor ??
+				FALLBACK_CONVERSION_FACTOR
+			);
+			if (!Number.isFinite(factor) || factor <= 0) {
+				throw new Error("Missing or invalid PL_to_emitter_density_conversion_factor.");
+			}
+
+			return {
+				conversionFactor: factor,
+				amplitudeCurve,
+				recordCount: records.length,
+				temperatureRange: {
+					min: Math.min(...temperatures),
+					max: Math.max(...temperatures)
+				},
+				amplitudeRange: {
+					min: Math.min(...amplitudes),
+					max: Math.max(...amplitudes)
+				},
+				densityRange: {
+					min: Math.min(...amplitudes) * factor,
+					max: Math.max(...amplitudes) * factor
+				}
+			};
+		}
+
+		function initialize() {
+			wireInput("temperature");
+			wireInput("amplitude");
+			wireInput("density");
+			clearOutputs();
+			setStatus("Loading table data...");
+			loadModel()
+				.then((model) => {
+					dataModel = model;
+					setStatus(`Loaded ${model.recordCount} records. Enter any one value to calculate the other two.`);
+				})
+				.catch((error) => {
+					console.error(error);
+					setStatus(error.message, true);
+					hints.temperature.textContent = "Unable to load the JSON table.";
+					hints.amplitude.textContent = "Check that the JSON file is present in the same folder as this page.";
+					hints.density.textContent = "The calculator is waiting for a valid data file.";
+				});
+		}
+
+		initialize();
+	</script>
+</body>
+</html>

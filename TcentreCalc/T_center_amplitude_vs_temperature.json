@@ -1,0 +1,134 @@
+{
+  "center": "T",
+  "label": "T Centres",
+  "wavelength_nm": 1326.0,
+  "PL_to_emitter_density_conversion_factor": 0.00232142857,
+  "records": [
+    {
+      "annealing_temperature_C": 390.0,
+      "amplitude_counts_per_s": 1.483582150108077,
+      "amplitude_uncertainty_counts_per_s": 0.3025142056644097,
+      "subject_id": "B047002A37"
+    },
+    {
+      "annealing_temperature_C": 405.0,
+      "amplitude_counts_per_s": 5.542886678329312,
+      "amplitude_uncertainty_counts_per_s": 0.38546097613359437,
+      "subject_id": "B047002A38"
+    },
+    {
+      "annealing_temperature_C": 420.0,
+      "amplitude_counts_per_s": 19.867287339158324,
+      "amplitude_uncertainty_counts_per_s": 0.38568246273204515,
+      "subject_id": "B047002A39"
+    },
+    {
+      "annealing_temperature_C": 435.0,
+      "amplitude_counts_per_s": 83.9060014223177,
+      "amplitude_uncertainty_counts_per_s": 0.615734443643324,
+      "subject_id": "B047002A40"
+    },
+    {
+      "annealing_temperature_C": 450.0,
+      "amplitude_counts_per_s": 134.58758020242107,
+      "amplitude_uncertainty_counts_per_s": 0.8476593102466727,
+      "subject_id": "B047002A41"
+    },
+    {
+      "annealing_temperature_C": 465.0,
+      "amplitude_counts_per_s": 469.8825364704692,
+      "amplitude_uncertainty_counts_per_s": 2.410269744048415,
+      "subject_id": "B047002A42"
+    },
+    {
+      "annealing_temperature_C": 465.0,
+      "amplitude_counts_per_s": 448.64753397667766,
+      "amplitude_uncertainty_counts_per_s": 2.980956199715506,
+      "subject_id": "B047002A860001"
+    },
+    {
+      "annealing_temperature_C": 480.0,
+      "amplitude_counts_per_s": 446.419096907854,
+      "amplitude_uncertainty_counts_per_s": 3.133651911470639,
+      "subject_id": "B047002A860002"
+    },
+    {
+      "annealing_temperature_C": 495.0,
+      "amplitude_counts_per_s": 1615.1526213040945,
+      "amplitude_uncertainty_counts_per_s": 10.267149343405885,
+      "subject_id": "B047002A860003"
+    },
+    {
+      "annealing_temperature_C": 510.0,
+      "amplitude_counts_per_s": 5914.0944874448505,
+      "amplitude_uncertainty_counts_per_s": 37.65264606947411,
+      "subject_id": "B047002A860004"
+    },
+    {
+      "annealing_temperature_C": 515.0,
+      "amplitude_counts_per_s": 5689.764098693815,
+      "amplitude_uncertainty_counts_per_s": 35.155734690716955,
+      "subject_id": "B047002A860011"
+    },
+    {
+      "annealing_temperature_C": 520.0,
+      "amplitude_counts_per_s": 7467.668811752438,
+      "amplitude_uncertainty_counts_per_s": 47.619804324688,
+      "subject_id": "B047002A860012"
+    },
+    {
+      "annealing_temperature_C": 525.0,
+      "amplitude_counts_per_s": 7176.216346480185,
+      "amplitude_uncertainty_counts_per_s": 42.69199264752021,
+      "subject_id": "B047002A860005"
+    },
+    {
+      "annealing_temperature_C": 525.0,
+      "amplitude_counts_per_s": 7413.043630133989,
+      "amplitude_uncertainty_counts_per_s": 46.146857835036435,
+      "subject_id": "B047002A860013"
+    },
+    {
+      "annealing_temperature_C": 525.0,
+      "amplitude_counts_per_s": 6154.887428959789,
+      "amplitude_uncertainty_counts_per_s": 39.695334116064934,
+      "subject_id": "B047002A880006"
+    },
+    {
+      "annealing_temperature_C": 530.0,
+      "amplitude_counts_per_s": 8192.691457049,
+      "amplitude_uncertainty_counts_per_s": 51.07711815031601,
+      "subject_id": "B047002A860014"
+    },
+    {
+      "annealing_temperature_C": 535.0,
+      "amplitude_counts_per_s": 6408.602761757559,
+      "amplitude_uncertainty_counts_per_s": 38.2926098020461,
+      "subject_id": "B047002A860015"
+    },
+    {
+      "annealing_temperature_C": 540.0,
+      "amplitude_counts_per_s": 4716.549913689548,
+      "amplitude_uncertainty_counts_per_s": 28.400774283293153,
+      "subject_id": "B047002A860006"
+    },
+    {
+      "annealing_temperature_C": 555.0,
+      "amplitude_counts_per_s": 560.3507358470869,
+      "amplitude_uncertainty_counts_per_s": 3.522649943148887,
+      "subject_id": "B047002A860007"
+    },
+    {
+      "annealing_temperature_C": 570.0,
+      "amplitude_counts_per_s": 28.99279221180675,
+      "amplitude_uncertainty_counts_per_s": 0.5782089660793661,
+      "subject_id": "B047002A860008"
+    },
+    {
+      "annealing_temperature_C": 585.0,
+      "amplitude_counts_per_s": 7.067209045741781,
+      "amplitude_uncertainty_counts_per_s": 0.5226253773770253,
+      "subject_id": "B047002A860009"
+    }
+  ]
+}
