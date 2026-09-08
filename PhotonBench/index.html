@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photon Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bench:#12151a; --panel:#1a1f27; --panel-2:#222834; --raise:#2a3140;
+  --line:#2c3441; --line-2:#3c4657;
+  --ink:#e9edf4; --dim:#8e98a9; --faint:#5d6779;
+  --beam:#ff3b4e; --ttl:#f2b33d; --coinc:#4bd3c1; --sel:#74a9ff; --spdc:#a877e0;
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bench);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100dvh;min-height:540px}
+
+header{display:flex;align-items:center;gap:18px;padding:10px 16px;
+  background:linear-gradient(180deg,#1d222b,#161a21);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.brand .lam{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.03em}
+.grp{display:flex;align-items:center;gap:8px}
+.grp>.lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.seg{display:flex;background:#10131a;border:1px solid var(--line);border-radius:7px;padding:2px}
+.seg button{border:0;background:transparent;color:var(--dim);padding:5px 11px;border-radius:5px;
+  font-size:12px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--raise);color:var(--ink);box-shadow:0 1px 0 #3d4657 inset}
+.btn{border:1px solid var(--line);background:#191e26;border-radius:7px;padding:6px 12px;font-size:12px;
+  color:var(--dim)}
+.btn:hover{border-color:var(--line-2);color:var(--ink)}
+.btn.primary{background:#243043;border-color:#33465f;color:#dce8ff}
+.btn.primary[data-run="1"]{background:#2a3a29;border-color:#3d5a3c;color:#d8f2d4}
+input[type=range]{accent-color:var(--sel);width:100px}
+.val{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:56px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.spacer{flex:1}
+
+main{display:grid;grid-template-columns:1fr 268px;min-height:0}
+#stage{position:relative;min-width:0;background:var(--bench)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hint{position:absolute;left:14px;bottom:11px;font-family:var(--mono);font-size:10.5px;
+  color:var(--faint);letter-spacing:.02em;pointer-events:none}
+.hint b{color:#7c8799;font-weight:500}
+
+aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;
+  min-height:0;overflow:hidden}
+.sect{border-bottom:1px solid var(--line);padding:12px 14px}
+h2{margin:0 0 10px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);font-weight:500}
+.rows{display:flex;flex-direction:column;gap:9px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.row label{font-size:12px;color:var(--dim)}
+.ctl{display:flex;align-items:center;gap:7px}
+.title-row{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.title-row .nm{font-size:13.5px;font-weight:600}
+.tag{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:4px;
+  background:#0f131a;border:1px solid var(--line);color:var(--dim);font-variant-numeric:tabular-nums}
+.empty{font-size:12px;color:var(--faint);line-height:1.6;margin:0}
+.wirelist{display:flex;flex-direction:column;gap:6px;max-height:118px;overflow:auto}
+.wirelist label{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.wirelist input{accent-color:var(--ttl)}
+
+.counters{flex:1;overflow:auto;padding:12px 14px}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px;
+  font-variant-numeric:tabular-nums}
+th{text-align:right;font-weight:500;color:var(--faint);font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:0 0 6px;border-bottom:1px solid var(--line)}
+th:first-child{text-align:left}
+td{padding:5px 0;border-bottom:1px solid #232935;text-align:right;color:var(--ink)}
+td:first-child{text-align:left;color:var(--dim)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+tr.cc td:first-child{color:var(--coinc)}
+
+.tray{display:flex;align-items:center;gap:9px;padding:9px 16px;background:#161a21;
+  border-top:1px solid var(--line);overflow-x:auto}
+.tray .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);flex:none;margin-right:2px}
+.chip{flex:none;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:8px;
+  background:var(--panel-2);border:1px solid var(--line);cursor:grab;user-select:none;
+  -webkit-user-select:none;touch-action:none}
+.chip:hover{border-color:var(--line-2);background:#262d3a}
+.chip canvas{width:30px;height:30px;flex:none}
+.chip .t{font-size:12px;font-weight:500;line-height:1.2}
+.chip .s{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.02em}
+#ghost{position:fixed;pointer-events:none;z-index:50;opacity:.92}
+
+@media (max-width:900px){ main{grid-template-columns:1fr} aside{display:none} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <h1>Photon Bench</h1>
+    <span class="lam">810 nm &middot; drawn in red</span>
+  </div>
+
+  <div class="grp">
+    <span class="lbl">Source</span>
+    <div class="seg" id="srcSeg">
+      <button data-m="single" aria-pressed="true">Single photons</button>
+      <button data-m="coherent" aria-pressed="false">Coherent</button>
+      <button data-m="classical" aria-pressed="false">Classical ray</button>
+    </div>
+  </div>
+
+  <div class="grp" id="muWrap" hidden>
+    <span class="lbl">&#10216;n&#10217;</span>
+    <input type="range" id="mu" min="0.1" max="3" step="0.1" value="1">
+    <span class="val" id="muV">1.0</span>
+  </div>
+
+  <div class="grp">
+    <span class="lbl">Clock</span>
+    <input type="range" id="speed" min="1" max="18" step="1" value="7">
+    <span class="val" id="speedV">7 ticks/s</span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="grp">
+    <button class="btn primary" id="run" data-run="1">Pause</button>
+    <button class="btn" id="step">Step</button>
+    <button class="btn" id="zero">Zero counts</button>
+    <button class="btn" id="clear">Clear bench</button>
+  </div>
+</header>
+
+<main>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hint">drag from the tray &middot; click to select &middot; <b>R</b> rotate &middot; <b>Del</b> remove &middot; <b>Space</b> run/pause</div>
+  </div>
+
+  <aside>
+    <div class="sect" id="insp"></div>
+    <div class="counters">
+      <h2>Counters</h2>
+      <table><thead><tr><th>Channel</th><th>Counts</th><th id="col3">Rate</th></tr></thead>
+      <tbody id="ctbody"></tbody></table>
+    </div>
+  </aside>
+</main>
+
+<div class="tray" id="tray"><span class="lbl">Components</span></div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Photon Bench — discrete-time amplitude simulator.
+   A mode is (cell, direction, hold). Every branch carries a complex
+   amplitude; branches that land on the same mode add coherently, which
+   is where all interference comes from. One- and two-photon states run
+   through the same single-mode transfer table. Detection is a
+   Born-rule projective measurement made once per tick.
+   ===================================================================== */
+
+const COLS = 24, ROWS = 13;
+const SLASH = "/", BACK = "\\";
+const DIRS = { R:[1,0], L:[-1,0], U:[0,-1], D:[0,1] };
+const DIRSEQ = ["R","D","L","U"];
+const ARROW = { R:"→", L:"←", U:"↑", D:"↓" };
+const REFL = {
+  "/":  { R:"U", U:"R", L:"D", D:"L" },
+  "\\": { R:"D", D:"R", L:"U", U:"L" },
+  "-":  { U:"D", D:"U" },          // flat, facing up/down — retroreflects a vertical beam
+  "|":  { R:"L", L:"R" }           // flat, facing left/right
+};
+const MIR_O = ["/", "\\", "-", "|"];
+const O_GLYPH = { "/":"╱", "\\":"╲", "-":"─", "|":"│" };
+const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+
+const cadd = (a,b)=>[a[0]+b[0], a[1]+b[1]];
+const cmul = (a,b)=>[a[0]*b[0]-a[1]*b[1], a[0]*b[1]+a[1]*b[0]];
+const cab2 = a=>a[0]*a[0]+a[1]*a[1];
+const cscl = (a,s)=>[a[0]*s, a[1]*s];
+const cexp = t=>[Math.cos(t), Math.sin(t)];
+const ONE = [1,0];
+
+function poisson(l){ let L=Math.exp(-l), k=0, p=1; do{ k++; p*=Math.random(); }while(p>L); return k-1; }
+function pickIdx(ws, total){
+  let u = Math.random()*total;
+  for(let i=0;i<ws.length;i++){ u -= ws[i]; if(u<=0) return i; }
+  return ws.length-1;
+}
+
+/* ============================== model ============================== */
+let comps = [], uid = 1, detN = 0, ccN = 0, selected = null, srcMode = "single";
+const grid = new Map();
+const byId = id => comps.find(c=>c.id===id);
+const compAt = (x,y)=> grid.get(x+","+y);
+function reindex(){ grid.clear(); for(const c of comps) grid.set(c.x+","+c.y, c); cDirty = true; }
+
+function makeComp(type,x,y){
+  const c = { id:"c"+(uid++), type, x, y };
+  if(type==="mirror"||type==="bs") c.o = SLASH;
+  if(type==="bs") c.R = 0.5;
+  if(type==="source"){ c.d="R"; c.mode=srcMode; c.period=8; }
+  if(type==="pair"){ c.d="R"; c.period=10; }
+  if(type==="phase") c.phi = Math.PI/2;
+  if(type==="delay") c.k = 1;
+  if(type==="detector"){ c.label="D"+(++detN); c.count=0; c.flash=-1e9; c.power=0; }
+  if(type==="coinc"){ c.label="CC"+(++ccN); c.wires=[]; c.window=2; c.count=0; c.flash=-1e9; c.pending=[]; }
+  return c;
+}
+
+/* =========================== simulation =========================== */
+let states = [], tick = 0, running = true, tps = 7, acc = 0, frac = 0;
+
+const parseK = k => { const p = k.split(","); return { x:+p[0], y:+p[1], d:p[2], h:+p[3] }; };
+const keyOf  = m => m.x+","+m.y+","+m.d+","+m.h;
+
+function moveMode(m){
+  if(m.h > 0) return { m:{x:m.x,y:m.y,d:m.d,h:m.h-1}, held:true };
+  const v = DIRS[m.d];
+  return { m:{x:m.x+v[0], y:m.y+v[1], d:m.d, h:0}, held:false };
+}
+function classify(m, held){
+  if(held) return null;
+  if(m.x<0 || m.y<0 || m.x>=COLS || m.y>=ROWS) return { lost:true };
+  const c = compAt(m.x,m.y);
+  if(!c) return null;
+  if(c.type==="detector") return { det:c };
+  if(c.type==="source" || c.type==="pair" || c.type==="coinc" || c.type==="block") return { lost:true };
+  if(c.type==="mirror" && !REFL[c.o][m.d]) return { lost:true };   // beam grazing a flat mirror
+  return null;
+}
+function transfer(m, held){
+  if(held) return [[m, ONE]];
+  const c = compAt(m.x,m.y);
+  if(!c) return [[m, ONE]];
+  if(c.type==="mirror") return [[{x:m.x,y:m.y,d:REFL[c.o][m.d],h:0}, ONE]];
+  if(c.type==="bs"){
+    const t = Math.sqrt(1-c.R), r = Math.sqrt(c.R);
+    return [ [{x:m.x,y:m.y,d:m.d,h:0}, [t,0]],                     // transmit
+             [{x:m.x,y:m.y,d:REFL[c.o][m.d],h:0}, [0,r]] ];        // reflect, phase i
+  }
+  if(c.type==="phase") return [[m, cexp(c.phi)]];
+  if(c.type==="delay") return [[{x:m.x,y:m.y,d:m.d,h:c.k}, ONE]];
+  return [[m, ONE]];
+}
+
+function click(det){
+  det.count++; det.flash = performance.now();
+  for(const c of comps){
+    if(c.type!=="coinc" || !c.wires.includes(det.id)) continue;
+    c.pending = c.pending.filter(e => tick - e.tick <= c.window);
+    const i = c.pending.findIndex(e => e.det !== det.id);
+    if(i >= 0){ c.pending.splice(i,1); c.count++; c.flash = performance.now(); }
+    else c.pending.push({ det:det.id, tick });
+  }
+}
+
+const PRUNE = 1e-9;
+function normalizeMap(map){
+  let n = 0; for(const a of map.values()) n += cab2(a);
+  if(n <= 1e-12) return false;
+  const s = 1/Math.sqrt(n);
+  for(const [k,a] of map) map.set(k, cscl(a,s));
+  return true;
+}
+function pruneMap(map){
+  for(const [k,a] of map) if(cab2(a) < PRUNE) map.delete(k);
+  return normalizeMap(map);
+}
+
+function stepOne(st){
+  const moved = new Map();
+  for(const [k,amp] of st.modes){
+    const mv = moveMode(parseK(k)), nk = keyOf(mv.m);
+    let e = moved.get(nk);
+    if(!e){ e = { amp:[0,0], m:mv.m, held:mv.held }; moved.set(nk,e); }
+    e.amp = cadd(e.amp, amp);
+  }
+  const abs = []; let pAbs = 0;
+  for(const [k,e] of moved){
+    const cl = classify(e.m, e.held);
+    if(cl){ const p = cab2(e.amp); pAbs += p; abs.push({ cl, p }); moved.delete(k); }
+  }
+  if(abs.length && (Math.random() < pAbs || moved.size===0)){
+    const j = pickIdx(abs.map(a=>a.p), pAbs || 1);
+    if(abs[j].cl.det) click(abs[j].cl.det);
+    return null;
+  }
+  if(moved.size===0) return null;
+  const surv = new Map();
+  for(const [k,e] of moved) surv.set(k, e.amp);
+  if(!normalizeMap(surv)) return null;
+  const out = new Map();
+  for(const [k,amp] of surv){
+    const e = moved.get(k);
+    for(const [nm,t] of transfer(e.m, e.held)){
+      const nk = keyOf(nm);
+      out.set(nk, cadd(out.get(nk) || [0,0], cmul(amp,t)));
+    }
+  }
+  if(!pruneMap(out)) return null;
+  st.modes = out;
+  return st;
+}
+
+function transferAll(st){
+  const out = new Map();
+  for(const [k,amp] of st.modes)
+    for(const [nm,t] of transfer(parseK(k), false)){
+      const nk = keyOf(nm);
+      out.set(nk, cadd(out.get(nk) || [0,0], cmul(amp,t)));
+    }
+  if(!pruneMap(out)) return null;
+  st.modes = out; return st;
+}
+
+function stepTwo(st){
+  const cache = new Map();
+  const info = k => {
+    let e = cache.get(k);
+    if(!e){
+      const mv = moveMode(parseK(k));
+      e = { nk:keyOf(mv.m), m:mv.m, held:mv.held, cl:classify(mv.m, mv.held) };
+      cache.set(k,e);
+    }
+    return e;
+  };
+  const moved = new Map(), minfo = new Map();
+  for(const [pk,amp] of st.pairs){
+    const s = pk.indexOf("|");
+    const a = info(pk.slice(0,s)), b = info(pk.slice(s+1));
+    minfo.set(a.nk,a); minfo.set(b.nk,b);
+    const nk = a.nk+"|"+b.nk;
+    moved.set(nk, cadd(moved.get(nk) || [0,0], amp));
+  }
+  let pBoth = 0, pOne = 0; const bothL = [], w = new Map();
+  for(const [pk,amp] of moved){
+    const s = pk.indexOf("|"), k1 = pk.slice(0,s), k2 = pk.slice(s+1);
+    const a1 = minfo.get(k1).cl, a2 = minfo.get(k2).cl, p = cab2(amp);
+    if(a1 && a2){ pBoth += p; bothL.push({k1,k2,p}); }
+    else if(a1){ pOne += p; w.set(k1,(w.get(k1)||0)+p); }
+    else if(a2){ pOne += p; w.set(k2,(w.get(k2)||0)+p); }
+  }
+  const u = Math.random();
+  if(bothL.length && u < pBoth){
+    const b = bothL[pickIdx(bothL.map(x=>x.p), pBoth)];
+    for(const k of [b.k1, b.k2]){ const cl = minfo.get(k).cl; if(cl.det) click(cl.det); }
+    return null;
+  }
+  if(w.size && u < pBoth + pOne){
+    const ks = [...w.keys()];
+    const hit = ks[pickIdx(ks.map(k=>w.get(k)), pOne)];
+    const cl = minfo.get(hit).cl;
+    if(cl.det) click(cl.det);
+    const res = new Map();                       // psi_res(n) ∝ psi(hit, n)
+    for(const [pk,amp] of moved){
+      const s = pk.indexOf("|"), k1 = pk.slice(0,s), k2 = pk.slice(s+1);
+      if(k1===hit && !minfo.get(k2).cl) res.set(k2, cadd(res.get(k2)||[0,0], amp));
+      else if(k2===hit && !minfo.get(k1).cl) res.set(k1, cadd(res.get(k1)||[0,0], amp));
+    }
+    if(!normalizeMap(res)) return null;
+    return transferAll({ kind:"one", modes:res });
+  }
+  const keep = new Map();
+  for(const [pk,amp] of moved){
+    const s = pk.indexOf("|");
+    if(minfo.get(pk.slice(0,s)).cl || minfo.get(pk.slice(s+1)).cl) continue;
+    keep.set(pk, amp);
+  }
+  if(!normalizeMap(keep)) return null;
+  const T = new Map();
+  for(const [k,e] of minfo) if(!e.cl) T.set(k, transfer(e.m, e.held));
+  const out = new Map();
+  for(const [pk,amp] of keep){
+    const s = pk.indexOf("|");
+    for(const [n1,t1] of T.get(pk.slice(0,s)))
+      for(const [n2,t2] of T.get(pk.slice(s+1))){
+        const nk = keyOf(n1)+"|"+keyOf(n2);
+        out.set(nk, cadd(out.get(nk)||[0,0], cmul(amp, cmul(t1,t2))));
+      }
+  }
+  if(!pruneMap(out)) return null;
+  st.pairs = out; return st;
+}
+
+function emit(){
+  for(const c of comps){
+    if(c.type==="source"){
+      if(c.mode==="classical" || tick % c.period) continue;
+      const n = c.mode==="single" ? 1 : poisson(+muEl.value);
+      for(let i=0;i<n;i++){
+        const m = new Map();
+        m.set(c.x+","+c.y+","+c.d+",0", ONE);
+        states.push({ kind:"one", modes:m });
+      }
+    } else if(c.type==="pair"){
+      if(tick % c.period) continue;
+      const a = c.x+","+c.y+","+c.d+",0";
+      const b = c.x+","+c.y+","+DIRSEQ[(DIRSEQ.indexOf(c.d)+1)%4]+",0";
+      const p = new Map(), s = 1/Math.SQRT2;
+      p.set(a+"|"+b, [s,0]); p.set(b+"|"+a, [s,0]);
+      states.push({ kind:"two", pairs:p });
+    }
+  }
+}
+
+/* ------------------- classical field (steady-state ray) -------------------
+   The same transfer table, but run as a continuous wave instead of a photon:
+   amplitude flows out of the source every tick and relaxes to steady state.
+   Nothing ever collapses — the energy simply divides at each beamsplitter,
+   so both detectors are illuminated at once. That is the classical
+   prediction the single-photon mode refutes.                              */
+let cfield = new Map(), cDirty = true;
+const classicalOn = () => comps.some(c => c.type==="source" && c.mode==="classical");
+
+function cStep(collect){
+  const next = new Map();
+  const add = (k,a)=>{ const p = next.get(k); next.set(k, p ? cadd(p,a) : a); };
+  for(const [k,amp] of cfield){
+    const p = k.split(","), v = DIRS[p[2]];
+    const m = { x:+p[0]+v[0], y:+p[1]+v[1], d:p[2], h:0 };
+    const cl = classify(m, false);
+    if(cl){ if(cl.det && collect) cl.det.power += cab2(amp); continue; }
+    for(const [om,t] of transfer(m, false)) add(om.x+","+om.y+","+om.d, cmul(amp,t));
+  }
+  for(const c of comps)
+    if(c.type==="source" && c.mode==="classical") add(c.x+","+c.y+","+c.d, ONE);
+  let e = 0; for(const a of next.values()) e += cab2(a);
+  if(e > 400){ const s = Math.sqrt(400/e); for(const [k,a] of next) next.set(k, cscl(a,s)); }
+  for(const [k,a] of next) if(cab2(a) < 1e-8) next.delete(k);
+  cfield = next;
+}
+function cSettle(){ cfield = new Map(); for(let i=0;i<90;i++) cStep(false); cDirty = false; }
+
+function doTick(){
+  tick++;
+  const next = [];
+  for(const st of states){
+    const r = st.kind==="one" ? stepOne(st) : stepTwo(st);
+    if(r) next.push(r);
+  }
+  states = next;
+  emit();
+  if(states.length > 240) states.splice(0, states.length-240);
+
+  for(const c of comps) if(c.type==="detector") c.power = 0;
+  if(classicalOn()){
+    if(cDirty) cSettle();
+    cStep(true);
+    for(const c of comps) if(c.type==="detector" && c.power > 1e-4) click(c);
+  } else if(cfield.size) cfield = new Map();
+}
+
+function photonDots(){
+  const out = [];
+  for(const st of states){
+    if(st.kind==="one"){
+      for(const [k,a] of st.modes){ const m = parseK(k); m.I = cab2(a); out.push(m); }
+    } else {
+      const n = new Map();
+      for(const [pk,a] of st.pairs){
+        const s = pk.indexOf("|"), p = cab2(a), k1 = pk.slice(0,s), k2 = pk.slice(s+1);
+        n.set(k1,(n.get(k1)||0)+p); n.set(k2,(n.get(k2)||0)+p);
+      }
+      for(const [k,p] of n){ const m = parseK(k); m.I = p; m.pair = true; out.push(m); }
+    }
+  }
+  return out;
+}
+
+/* ============================ rendering ============================ */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let S = 40, OX = 0, OY = 0, DPR = 1;
+const boardCv = document.createElement("canvas");
+
+const cx = x => OX + (x+0.5)*S, cy = y => OY + (y+0.5)*S;
+const cell = (px,py) => ({ x:Math.floor((px-OX)/S), y:Math.floor((py-OY)/S) });
+const inBounds = p => p.x>=0 && p.y>=0 && p.x<COLS && p.y<ROWS;
+
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect();
+  if(r.width < 2 || r.height < 2) return;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(r.width*DPR); cv.height = Math.round(r.height*DPR);
+  S = Math.max(16, Math.floor(Math.min(r.width/COLS, r.height/ROWS)));
+  OX = Math.round((r.width - S*COLS)/2); OY = Math.round((r.height - S*ROWS)/2);
+  paintBoard(r.width, r.height);
+}
+function paintBoard(w,h){
+  boardCv.width = Math.round(w*DPR); boardCv.height = Math.round(h*DPR);
+  const g = boardCv.getContext("2d");
+  g.setTransform(DPR,0,0,DPR,0,0);
+  g.fillStyle = "#0e1116"; g.fillRect(0,0,w,h);
+  const grd = g.createLinearGradient(OX,OY,OX+S*COLS,OY+S*ROWS);
+  grd.addColorStop(0,"#1a1e26"); grd.addColorStop(1,"#12161c");
+  g.fillStyle = grd; g.fillRect(OX,OY,S*COLS,S*ROWS);
+  const rr = Math.max(1.3, S*0.055);
+  for(let i=0;i<=COLS;i++) for(let j=0;j<=ROWS;j++){
+    const px = OX+i*S, py = OY+j*S;
+    g.beginPath(); g.arc(px+0.6,py+0.6,rr,0,6.2832);
+    g.fillStyle = "rgba(255,255,255,.075)"; g.fill();
+    g.beginPath(); g.arc(px,py,rr,0,6.2832);
+    g.fillStyle = "#090b0f"; g.fill();
+  }
+  g.strokeStyle = "#252c37"; g.lineWidth = 1;
+  g.strokeRect(OX+.5,OY+.5,S*COLS-1,S*ROWS-1);
+}
+new ResizeObserver(resize).observe(document.getElementById("stage"));
+
+function diag(g,x,y,o,len,w,col){
+  const s = S*len/2, sg = o===SLASH ? -1 : 1;
+  g.beginPath();
+  g.moveTo(cx(x)-s, cy(y)-sg*s); g.lineTo(cx(x)+s, cy(y)+sg*s);
+  g.lineWidth = w; g.strokeStyle = col; g.lineCap = "butt"; g.stroke();
+}
+
+function drawComp(g, c, now){
+  const X = cx(c.x), Y = cy(c.y);
+  g.textAlign = "center"; g.textBaseline = "middle";
+
+  if(c.type==="mirror"){
+    const s = S*0.43, e = { "/":[[-s,s],[s,-s]], "\\":[[-s,-s],[s,s]],
+                            "-":[[-s,0],[s,0]], "|":[[0,-s],[0,s]] }[c.o];
+    const line = (w,col)=>{
+      g.beginPath(); g.moveTo(X+e[0][0], Y+e[0][1]); g.lineTo(X+e[1][0], Y+e[1][1]);
+      g.lineWidth = w; g.strokeStyle = col; g.lineCap = "butt"; g.stroke();
+    };
+    line(Math.max(3,S*0.135), "#48525f");
+    line(Math.max(2,S*0.07),  "#e6edf8");
+  }
+  else if(c.type==="bs"){
+    const s = S*0.33;
+    g.fillStyle = "rgba(150,180,225,.12)"; g.strokeStyle = "#8296b0"; g.lineWidth = 1.4;
+    g.beginPath(); g.rect(X-s,Y-s,2*s,2*s); g.fill(); g.stroke();
+    diag(g,c.x,c.y,c.o,0.66,Math.max(1.5,S*0.05),"#dde7f6");
+    if(Math.abs(c.R-0.5) > 0.015){
+      g.fillStyle = "#8e98a9"; g.font = `500 ${Math.max(8,S*0.2)}px ${MONO}`;
+      g.fillText(Math.round(c.R*100)+":"+Math.round(100-c.R*100), X, Y+S*0.56);
+    }
+  }
+  else if(c.type==="phase"){
+    const w = S*0.17, h = S*0.6;
+    g.fillStyle = "rgba(116,169,255,.18)"; g.strokeStyle = "#74a9ff"; g.lineWidth = 1.3;
+    g.beginPath(); g.rect(X-w,Y-h/2,2*w,h); g.fill(); g.stroke();
+    g.fillStyle = "#a9c8ff"; g.font = `500 ${Math.max(8,S*0.2)}px ${MONO}`;
+    const t = (c.phi/Math.PI);
+    g.fillText((Math.round(t*100)/100)+"π", X, Y+S*0.55);
+  }
+  else if(c.type==="delay"){
+    g.strokeStyle = "#93a0b4"; g.lineWidth = Math.max(1.3,S*0.045);
+    for(let i=0;i<3;i++){ g.beginPath(); g.arc(X,Y,S*(0.11+i*0.085),0.7,5.6); g.stroke(); }
+    g.fillStyle = "#8e98a9"; g.font = `500 ${Math.max(8,S*0.2)}px ${MONO}`;
+    g.fillText("+"+c.k, X, Y+S*0.56);
+  }
+  else if(c.type==="block"){
+    const w = S*0.35;
+    g.beginPath(); g.roundRect(X-w,Y-w,2*w,2*w,S*0.06);
+    g.fillStyle = "#0b0d11"; g.strokeStyle = "#39414e"; g.lineWidth = 1.4;
+    g.fill(); g.stroke();
+    g.save();
+    g.beginPath(); g.roundRect(X-w,Y-w,2*w,2*w,S*0.06); g.clip();
+    g.strokeStyle = "rgba(146,158,176,.32)"; g.lineWidth = Math.max(1, S*0.033);
+    for(let i=-2;i<=2;i++){
+      const o = i*S*0.2;
+      g.beginPath(); g.moveTo(X-w+o, Y+w); g.lineTo(X+w+o, Y-w); g.stroke();
+    }
+    g.restore();
+  }
+  else if(c.type==="detector"){
+    const s = S*0.35;
+    const lit = c.power > 1e-4 ? Math.min(1, Math.sqrt(c.power))
+                               : Math.max(0, 1-(now-c.flash)/260);
+    if(lit>0){
+      g.beginPath(); g.arc(X,Y,s+S*0.26*lit,0,6.2832);
+      g.fillStyle = `rgba(242,179,61,${.16*lit})`; g.fill();
+    }
+    g.beginPath(); g.arc(X,Y,s,0,6.2832);
+    g.fillStyle = lit>0 ? `rgba(242,179,61,${.3+.65*lit})` : "#222a35"; g.fill();
+    g.strokeStyle = lit>0 ? "#ffca5e" : "#4b5567"; g.lineWidth = 1.6; g.stroke();
+    g.fillStyle = lit>0.35 ? "#241a05" : "#aab4c4";
+    g.font = `600 ${Math.max(8,S*0.26)}px ${MONO}`;
+    g.fillText(c.label, X, Y);
+    g.fillStyle = "#7d8798"; g.font = `500 ${Math.max(7,S*0.19)}px ${MONO}`;
+    g.fillText(String(c.count), X, Y+S*0.58);
+  }
+  else if(c.type==="coinc"){
+    const lit = Math.max(0, 1-(now-c.flash)/320), w = S*0.4;
+    g.beginPath(); g.roundRect(X-w,Y-w,2*w,2*w,S*0.1);
+    g.fillStyle = lit>0 ? `rgba(75,211,193,${.22+.5*lit})` : "#1e2530";
+    g.strokeStyle = lit>0 ? "#6ff0de" : "#48566a"; g.lineWidth = 1.5; g.fill(); g.stroke();
+    g.fillStyle = lit>0.35 ? "#05231f" : "#9fb6b2";
+    g.font = `600 ${Math.max(9,S*0.32)}px ${MONO}`;
+    g.fillText("&", X, Y-S*0.07);
+    g.font = `500 ${Math.max(7,S*0.18)}px ${MONO}`;
+    g.fillStyle = lit>0.35 ? "#05231f" : "#7d8798";
+    g.fillText(String(c.count), X, Y+S*0.21);
+  }
+  else if(c.type==="source" || c.type==="pair"){
+    const w = S*0.36, pair = c.type==="pair";
+    g.beginPath(); g.roundRect(X-w,Y-w,2*w,2*w,S*0.08);
+    g.fillStyle = pair ? "rgba(168,119,224,.16)" : "#252c38";
+    g.strokeStyle = pair ? "#a877e0" : "#5a6577"; g.lineWidth = 1.5;
+    g.fill(); g.stroke();
+    g.fillStyle = pair ? "#dcc6f7" : "#c3ccdb";
+    g.font = `600 ${Math.max(8,S*(pair?0.19:0.24))}px ${MONO}`;
+    g.fillText(pair ? "SPDC" : { single:"1γ", coherent:"α", classical:"cw" }[c.mode], X, Y);
+    const dl = pair ? [c.d, DIRSEQ[(DIRSEQ.indexOf(c.d)+1)%4]] : [c.d];
+    for(const d of dl){
+      const v = DIRS[d];
+      g.beginPath();
+      g.moveTo(X+v[0]*w, Y+v[1]*w);
+      g.lineTo(X+v[0]*(w+S*0.17), Y+v[1]*(w+S*0.17));
+      g.strokeStyle = "#ff3b4e"; g.lineWidth = 2; g.lineCap = "round"; g.stroke();
+      g.beginPath(); g.arc(X+v[0]*(w+S*0.23), Y+v[1]*(w+S*0.23), Math.max(1.5,S*0.048),0,6.2832);
+      g.fillStyle = "#ff3b4e"; g.fill();
+    }
+  }
+}
+
+function drawWires(g, now){
+  for(const c of comps){
+    if(c.type!=="coinc") continue;
+    for(const id of c.wires){
+      const d = byId(id); if(!d) continue;
+      const lit = Math.max(0, 1-(now-d.flash)/260);
+      g.beginPath();
+      g.moveTo(cx(d.x), cy(d.y));
+      g.quadraticCurveTo(cx(d.x), cy(c.y), cx(c.x), cy(c.y));
+      g.strokeStyle = lit>0 ? "rgba(255,202,94,.95)" : "rgba(242,179,61,.24)";
+      g.lineWidth = lit>0 ? 2.4 : 1.3;
+      g.setLineDash([S*0.15, S*0.13]); g.stroke();
+    }
+  }
+  g.setLineDash([]);
+}
+
+function drawBeams(g){
+  if(!cfield.size) return;
+  g.lineCap = "butt";      // butt caps keep collinear cell segments seamless
+  for(const [k,amp] of cfield){
+    const I = Math.min(1, cab2(amp));
+    if(I < 0.0025) continue;
+    const p = k.split(","), v = DIRS[p[2]];
+    const x0 = cx(+p[0]), y0 = cy(+p[1]), x1 = cx(+p[0]+v[0]), y1 = cy(+p[1]+v[1]);
+    const a = Math.sqrt(I);
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1);
+    g.strokeStyle = `rgba(255,64,80,${0.07+0.13*a})`;
+    g.lineWidth = 2 + Math.max(3,S*0.24)*a; g.stroke();
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1);
+    g.strokeStyle = `rgba(255,116,126,${0.3+0.65*a})`;
+    g.lineWidth = Math.max(1.3, S*0.045); g.stroke();
+  }
+}
+
+function drawPhotons(g, f){
+  for(const m of photonDots()){
+    const v = DIRS[m.d], adv = m.h>0 ? 0 : f;
+    const px = cx(m.x)+v[0]*S*adv, py = cy(m.y)+v[1]*S*adv;
+    const I = Math.min(1, m.I);
+    const r = Math.max(2.2, S*0.11) * (0.6 + 0.4*Math.sqrt(I));
+    const gr = g.createRadialGradient(px,py,0,px,py,r*3.6);
+    gr.addColorStop(0, `rgba(255,95,110,${0.4*I})`);
+    gr.addColorStop(1, "rgba(255,59,78,0)");
+    g.fillStyle = gr; g.beginPath(); g.arc(px,py,r*3.6,0,6.2832); g.fill();
+    if(m.pair){
+      g.beginPath(); g.arc(px,py,r+2.4,0,6.2832);
+      g.strokeStyle = `rgba(190,135,255,${0.55*I})`; g.lineWidth = 1.2; g.stroke();
+    }
+    g.beginPath(); g.arc(px,py,r,0,6.2832);
+    g.fillStyle = `rgba(255,59,78,${0.22+0.78*Math.sqrt(I)})`; g.fill();
+  }
+}
+
+function draw(){
+  const now = performance.now();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.drawImage(boardCv,0,0);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  drawWires(ctx, now);
+  drawBeams(ctx);
+  for(const c of comps) drawComp(ctx, c, now);
+  const sel = byId(selected);
+  if(sel){
+    ctx.beginPath(); ctx.roundRect(OX+sel.x*S+2, OY+sel.y*S+2, S-4, S-4, 6);
+    ctx.fillStyle = "rgba(116,169,255,.07)"; ctx.fill();
+    ctx.strokeStyle = "rgba(116,169,255,.8)"; ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  if(hoverCell){
+    ctx.beginPath(); ctx.roundRect(OX+hoverCell.x*S+2, OY+hoverCell.y*S+2, S-4, S-4, 6);
+    ctx.setLineDash([4,4]); ctx.strokeStyle = "rgba(116,169,255,.5)"; ctx.lineWidth = 1.3;
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  drawPhotons(ctx, frac);
+}
+
+let last = performance.now();
+function loop(t){
+  const dt = Math.min(150, t-last); last = t;
+  if(running){
+    const ms = 1000/tps;
+    acc += dt;
+    let guard = 0;
+    while(acc >= ms && guard++ < 6){ doTick(); acc -= ms; }
+    if(acc > ms) acc = 0;
+    frac = Math.min(1, acc/ms);
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ============================== tray ============================== */
+const TRAY = [
+  { type:"source",   t:"Source",        s:"1γ / coherent" },
+  { type:"pair",     t:"Pair source",   s:"SPDC → 2γ" },
+  { type:"mirror",   t:"Mirror",        s:"90° fold" },
+  { type:"bs",       t:"Beamsplitter",  s:"50:50" },
+  { type:"phase",    t:"Phase shifter", s:"e^{iφ}" },
+  { type:"delay",    t:"Delay",         s:"+1 cell" },
+  { type:"block",    t:"Beam block",    s:"dump, no click" },
+  { type:"detector", t:"Detector",      s:"APD + TTL" },
+  { type:"coinc",    t:"Coincidence",   s:"AND gate" }
+];
+const trayEl = document.getElementById("tray");
+const PROTO = t => ({ type:t, o:SLASH, R:0.5, d:"R", mode:"single", phi:Math.PI/2, k:1,
+                      label: t==="detector" ? "D" : "CC", count:0, flash:-1e9, wires:[], x:0, y:0 });
+
+TRAY.forEach(item=>{
+  const el = document.createElement("div");
+  el.className = "chip"; el.dataset.type = item.type;
+  const ic = document.createElement("canvas"); ic.width = ic.height = 64;
+  el.appendChild(ic);
+  const box = document.createElement("div");
+  const a = document.createElement("div"); a.className = "t"; a.textContent = item.t;
+  const b = document.createElement("div"); b.className = "s"; b.textContent = item.s;
+  box.appendChild(a); box.appendChild(b);
+  el.appendChild(box);
+  trayEl.appendChild(el);
+  item.icon = ic;
+
+  const g = ic.getContext("2d");
+  const oS=S, oOX=OX, oOY=OY;
+  S = 60; OX = 2; OY = 2;
+  drawComp(g, PROTO(item.type), 1e9);
+  S=oS; OX=oOX; OY=oOY;
+});
+
+/* =========================== interaction =========================== */
+let dragging = null, ghost = null, hoverCell = null, movedComp = null;
+
+trayEl.addEventListener("pointerdown", e=>{
+  const chip = e.target.closest(".chip"); if(!chip) return;
+  e.preventDefault();
+  dragging = chip.dataset.type;
+  ghost = document.createElement("div"); ghost.id = "ghost";
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const px = Math.max(30, S*0.95);
+  c.style.width = c.style.height = px+"px";
+  c.getContext("2d").drawImage(TRAY.find(t=>t.type===dragging).icon, 0, 0);
+  ghost.appendChild(c); document.body.appendChild(ghost);
+  moveGhost(e);
+  window.addEventListener("pointermove", onDragMove);
+  window.addEventListener("pointerup", onDragEnd, { once:true });
+});
+function moveGhost(e){
+  if(!ghost) return;
+  const r = ghost.firstChild.getBoundingClientRect();
+  ghost.style.left = (e.clientX - (r.width||34)/2)+"px";
+  ghost.style.top  = (e.clientY - (r.height||34)/2)+"px";
+}
+function onDragMove(e){
+  moveGhost(e);
+  const r = cv.getBoundingClientRect();
+  const p = cell(e.clientX-r.left, e.clientY-r.top);
+  hoverCell = inBounds(p) && !compAt(p.x,p.y) ? p : null;
+}
+function onDragEnd(e){
+  window.removeEventListener("pointermove", onDragMove);
+  if(ghost){ ghost.remove(); ghost = null; }
+  const r = cv.getBoundingClientRect();
+  const p = cell(e.clientX-r.left, e.clientY-r.top);
+  if(dragging && inBounds(p) && !compAt(p.x,p.y)){
+    const c = makeComp(dragging, p.x, p.y);
+    comps.push(c); reindex(); selected = c.id; renderInsp(); renderCounters();
+  }
+  dragging = null; hoverCell = null;
+}
+
+cv.addEventListener("pointerdown", e=>{
+  const r = cv.getBoundingClientRect();
+  const p = cell(e.clientX-r.left, e.clientY-r.top);
+  const c = inBounds(p) ? compAt(p.x,p.y) : null;
+  selected = c ? c.id : null;
+  renderInsp();
+  if(c){ movedComp = c; cv.setPointerCapture(e.pointerId); }
+});
+cv.addEventListener("pointermove", e=>{
+  if(!movedComp) return;
+  const r = cv.getBoundingClientRect();
+  const p = cell(e.clientX-r.left, e.clientY-r.top);
+  if(inBounds(p) && !compAt(p.x,p.y)){ movedComp.x = p.x; movedComp.y = p.y; reindex(); }
+});
+const endMove = ()=>{ movedComp = null; };
+cv.addEventListener("pointerup", endMove);
+cv.addEventListener("pointercancel", endMove);
+
+window.addEventListener("keydown", e=>{
+  if(e.target.matches("input,select,textarea,button")) return;
+  if(e.key==="r"||e.key==="R") rotate();
+  else if(e.key==="Delete"||e.key==="Backspace"){ removeSel(); e.preventDefault(); }
+  else if(e.key===" "){ toggleRun(); e.preventDefault(); }
+  else if(e.key==="Escape"){ selected = null; renderInsp(); }
+});
+function rotate(){
+  const c = byId(selected); if(!c) return;
+  if(c.type==="mirror") c.o = MIR_O[(MIR_O.indexOf(c.o)+1) % 4];
+  else if(c.type==="bs") c.o = c.o===SLASH ? BACK : SLASH;
+  else if(c.type==="source"||c.type==="pair") c.d = DIRSEQ[(DIRSEQ.indexOf(c.d)+1)%4];
+  cDirty = true; renderInsp();
+}
+function removeSel(){
+  const c = byId(selected); if(!c) return;
+  comps = comps.filter(x=>x!==c);
+  for(const k of comps) if(k.type==="coinc") k.wires = k.wires.filter(w=>w!==c.id);
+  selected = null; reindex(); renderInsp(); renderCounters();
+}
+
+/* ============================ inspector ============================ */
+const insp = document.getElementById("insp");
+const NAMES = { source:"Source", pair:"Pair source", mirror:"Mirror", bs:"Beamsplitter",
+  phase:"Phase shifter", delay:"Delay line", block:"Beam block", detector:"Detector",
+  coinc:"Coincidence counter" };
+
+const fmt = {
+  R:      v => Math.round(v*100)+" : "+Math.round(100-v*100),
+  phi:    v => (Math.round(v/Math.PI*100)/100)+"π",
+  k:      v => "+"+v+" cell"+(v>1?"s":""),
+  period: v => v+" ticks",
+  window: v => "±"+v+" ticks"
+};
+const row = (l,ctl)=>`<div class="row"><label>${l}</label>${ctl}</div>`;
+const rng = (l,k,v,mn,mx,st)=>
+  `<div class="row"><label>${l}</label><span class="ctl">
+   <input type="range" data-k="${k}" min="${mn}" max="${mx}" step="${st}" value="${v}">
+   <span class="val">${fmt[k](v)}</span></span></div>`;
+
+function renderInsp(){
+  const c = byId(selected);
+  if(!c){
+    insp.innerHTML = `<h2>Inspector</h2><p class="empty">Nothing selected. Drag a component onto the
+      breadboard, then click it to set its parameters.</p>`;
+    return;
+  }
+  let h = `<h2>Inspector</h2><div class="title-row"><span class="nm">${NAMES[c.type]}</span>`;
+  if(c.label) h += `<span class="tag">${c.label}</span>`;
+  h += `</div><div class="rows">`;
+
+  if(c.type==="mirror"||c.type==="bs")
+    h += row("Orientation", `<button class="btn" data-act="rot">${O_GLYPH[c.o]}&nbsp; rotate</button>`);
+  if(c.type==="bs") h += rng("Reflect : transmit","R",c.R,0.05,0.95,0.01);
+  if(c.type==="phase") h += rng("Phase shift φ","phi",c.phi,0,6.2832,0.0628);
+  if(c.type==="delay") h += rng("Path added","k",c.k,1,8,1);
+  if(c.type==="source"||c.type==="pair"){
+    h += row("Emits toward", `<button class="btn" data-act="rot">${ARROW[c.d]}&nbsp; rotate</button>`);
+    h += rng("Emission period","period",c.period,3,24,1);
+  }
+  if(c.type==="source")
+    h += row("Statistics", `<span class="tag">${
+      { single:"sub-Poissonian", coherent:"Poissonian", classical:"classical wave" }[c.mode]}</span>`);
+  if(c.type==="pair")
+    h += row("State", `<span class="tag">|1,1⟩</span>`);
+  if(c.type==="block")
+    h += row("Effect", `<span class="tag">absorbs, no signal</span>`);
+  if(c.type==="detector"){
+    h += row("Clicks", `<span class="tag">${c.count}</span>`);
+    if(classicalOn()) h += row("Incident power", `<span class="tag">${c.power.toFixed(3)}</span>`);
+  }
+  if(c.type==="coinc"){
+    h += rng("Coincidence window","window",c.window,1,8,1);
+    h += row("Coincidences", `<span class="tag">${c.count}</span>`);
+  }
+  h += row("", `<button class="btn" data-act="del">Remove</button>`);
+  h += `</div>`;
+
+  if(c.type==="coinc"){
+    const dets = comps.filter(x=>x.type==="detector");
+    h += `<h2 style="margin:14px 0 8px">Electrical inputs</h2><div class="wirelist">`;
+    h += dets.length
+      ? dets.map(d=>`<label><input type="checkbox" data-wire="${d.id}" ${c.wires.includes(d.id)?"checked":""}> ${d.label}</label>`).join("")
+      : `<span class="empty">No detectors on the bench yet.</span>`;
+    h += `</div>`;
+  }
+  insp.innerHTML = h;
+
+  insp.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click", ()=>{
+    if(b.dataset.act==="rot") rotate(); else removeSel();
+  }));
+  insp.querySelectorAll("input[type=range]").forEach(inp=>inp.addEventListener("input", ()=>{
+    const k = inp.dataset.k;
+    c[k] = (k==="R"||k==="phi") ? +inp.value : Math.round(+inp.value);
+    inp.nextElementSibling.textContent = fmt[k](c[k]);
+    cDirty = true;
+  }));
+  insp.querySelectorAll("input[data-wire]").forEach(inp=>inp.addEventListener("change", ()=>{
+    const id = inp.dataset.wire;
+    if(inp.checked){ if(!c.wires.includes(id)) c.wires.push(id); }
+    else c.wires = c.wires.filter(w=>w!==id);
+  }));
+}
+
+/* ============================ counters ============================ */
+const ctbody = document.getElementById("ctbody");
+let lastT = performance.now(); const lastVals = new Map();
+function renderCounters(){
+  const rows = comps.filter(c=>c.type==="detector"||c.type==="coinc");
+  ctbody.innerHTML = rows.length ? rows.map(c=>
+    `<tr class="${c.type==="coinc"?"cc":""}" data-id="${c.id}">
+       <td><span class="dot" style="background:${c.type==="coinc"?"var(--coinc)":"var(--ttl)"}"></span>${c.label}</td>
+       <td class="n">${c.count}</td><td class="r">0.0/s</td></tr>`).join("")
+    : `<tr><td colspan="3" style="color:var(--faint);border:0;padding-top:6px">No detectors on the bench.</td></tr>`;
+}
+setInterval(()=>{
+  const now = performance.now(), dt = Math.max(0.2,(now-lastT)/1000); lastT = now;
+  const cl = classicalOn();
+  document.getElementById("col3").textContent = cl ? "Power" : "Rate";
+  ctbody.querySelectorAll("tr[data-id]").forEach(tr=>{
+    const c = byId(tr.dataset.id); if(!c) return;
+    const prev = lastVals.has(c.id) ? lastVals.get(c.id) : c.count;
+    tr.querySelector(".n").textContent = c.count;
+    tr.querySelector(".r").textContent = cl
+      ? (c.type==="detector" ? c.power.toFixed(3) : "—")
+      : ((c.count-prev)/dt).toFixed(1)+"/s";
+    lastVals.set(c.id, c.count);
+  });
+}, 1000);
+
+/* ========================= header controls ========================= */
+const muEl = document.getElementById("mu"), muV = document.getElementById("muV");
+const muWrap = document.getElementById("muWrap");
+const spEl = document.getElementById("speed"), spV = document.getElementById("speedV");
+const runBtn = document.getElementById("run");
+
+document.getElementById("srcSeg").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  for(const x of e.currentTarget.children) x.setAttribute("aria-pressed", String(x===b));
+  srcMode = b.dataset.m;
+  for(const c of comps) if(c.type==="source") c.mode = srcMode;
+  muWrap.hidden = srcMode !== "coherent";
+  cDirty = true; states = [];
+  for(const c of comps) if(c.type==="detector") c.power = 0;
+  renderCounters(); renderInsp();
+});
+muEl.addEventListener("input", ()=> muV.textContent = (+muEl.value).toFixed(1));
+spEl.addEventListener("input", ()=>{ tps = +spEl.value; spV.textContent = tps+" ticks/s"; });
+function toggleRun(){
+  running = !running;
+  runBtn.textContent = running ? "Pause" : "Run";
+  runBtn.dataset.run = running ? "1" : "0";
+}
+runBtn.addEventListener("click", toggleRun);
+document.getElementById("step").addEventListener("click", ()=>{
+  running = false; runBtn.textContent = "Run"; runBtn.dataset.run = "0"; frac = 0; acc = 0; doTick();
+});
+document.getElementById("zero").addEventListener("click", ()=>{
+  for(const c of comps){
+    if(c.type==="detector"||c.type==="coinc"){ c.count = 0; c.flash = -1e9; }
+    if(c.pending) c.pending = [];
+  }
+  lastVals.clear(); renderCounters(); renderInsp();
+});
+document.getElementById("clear").addEventListener("click", ()=>{
+  comps = []; states = []; detN = 0; ccN = 0; selected = null;
+  reindex(); renderInsp(); renderCounters();
+});
+
+/* ========================== initial bench ========================== */
+(function seed(){
+  const s  = makeComp("source",2,6);
+  const bs = makeComp("bs",8,6);
+  const d1 = makeComp("detector",12,6);
+  const d2 = makeComp("detector",8,2);
+  const cc = makeComp("coinc",12,10);
+  cc.wires = [d1.id, d2.id];
+  comps = [s,bs,d1,d2,cc];
+  reindex();
+})();
+resize();
+renderInsp();
+renderCounters();
+requestAnimationFrame(t=>{ last = t; loop(t); });
+</script>
+</body>
+</html>
