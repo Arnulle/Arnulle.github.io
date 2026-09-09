@@ -71,6 +71,9 @@ h2{margin:0 0 10px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
 .wirelist{display:flex;flex-direction:column;gap:6px;max-height:118px;overflow:auto}
 .wirelist label{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
 .wirelist input{accent-color:var(--ttl)}
+select{background:#12161d;border:1px solid var(--line);border-radius:6px;padding:4px 7px;
+  font-size:11.5px;font-family:var(--mono);color:var(--dim);max-width:136px}
+select:hover{border-color:var(--line-2)}
 
 .counters{flex:1;overflow:auto;padding:12px 14px}
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px;
@@ -209,9 +212,10 @@ function makeComp(type,x,y){
   const c = { id:"c"+(uid++), type, x, y };
   if(type==="mirror"||type==="bs") c.o = SLASH;
   if(type==="bs") c.R = 0.5;
-  if(type==="source"){ c.d="R"; c.mode=srcMode; c.period=8; }
-  if(type==="pair"){ c.d="R"; c.period=10; }
-  if(type==="phase") c.phi = Math.PI/2;
+  if(type==="source"){ c.d="R"; c.mode=srcMode; c.period=8; c.trig=null; c.trigDelay=0; c.ctrl=-1e9; }
+  if(type==="pair"){ c.d="R"; c.period=10; c.trig=null; c.trigDelay=0; c.ctrl=-1e9; }
+  if(type==="phase"){ c.phi = Math.PI/2; c.gate=null; c.gateDelay=0; c.gateWidth=3;
+                      c.gateFrom=-1; c.gateUntil=-1; }
   if(type==="delay") c.k = 1;
   if(type==="detector"){ c.label="D"+(++detN); c.count=0; c.flash=-1e9; c.power=0; }
   if(type==="coinc"){ c.label="CC"+(++ccN); c.wires=[]; c.window=2; c.count=0; c.flash=-1e9; c.pending=[]; }
@@ -249,13 +253,39 @@ function transfer(m, held){
     return [ [{x:m.x,y:m.y,d:m.d,h:0}, [t,0]],                     // transmit
              [{x:m.x,y:m.y,d:REFL[c.o][m.d],h:0}, [0,r]] ];        // reflect, phase i
   }
-  if(c.type==="phase") return [[m, cexp(c.phi)]];
+  if(c.type==="phase")
+    return [[m, gateOpen(c) ? cexp(c.phi) : ONE]];
   if(c.type==="delay") return [[{x:m.x,y:m.y,d:m.d,h:c.k}, ONE]];
   return [[m, ONE]];
 }
 
+/* --- electrical feed-forward -----------------------------------------
+   A detector's TTL pulse can arm a source (heralded / triggered emission)
+   or open a phase shifter for a fixed window (an EOM under active control).
+   Both take a settable electronic delay, so the pulse can be made to
+   arrive with the photon it is meant to act on.                        */
+const gateOpen = c => !c.gate || (tick >= c.gateFrom && tick < c.gateUntil);
+let sched = [];
+
+function fireControls(det){
+  for(const c of comps){
+    if(c.trig === det.id){
+      sched.push({ t: tick + c.trigDelay, id: c.id });
+      c.ctrl = performance.now();
+    }
+    if(c.gate === det.id){
+      c.gateFrom  = tick + c.gateDelay;
+      c.gateUntil = c.gateFrom + c.gateWidth;
+      c.ctrl = performance.now();
+      cDirty = true;
+    }
+  }
+  if(sched.length > 400) sched.splice(0, sched.length-400);
+}
+
 function click(det){
   det.count++; det.flash = performance.now();
+  fireControls(det);
   for(const c of comps){
     if(c.type!=="coinc" || !c.wires.includes(det.id)) continue;
     c.pending = c.pending.filter(e => tick - e.tick <= c.window);
@@ -393,24 +423,39 @@ function stepTwo(st){
   st.pairs = out; return st;
 }
 
+function fireSource(c){
+  if(c.type==="pair"){
+    const a = c.x+","+c.y+","+c.d+",0";
+    const b = c.x+","+c.y+","+DIRSEQ[(DIRSEQ.indexOf(c.d)+1)%4]+",0";
+    const p = new Map(), s = 1/Math.SQRT2;
+    p.set(a+"|"+b, [s,0]); p.set(b+"|"+a, [s,0]);
+    states.push({ kind:"two", pairs:p });
+    return;
+  }
+  if(c.mode==="classical") return;
+  const n = c.mode==="single" ? 1 : poisson(+muEl.value);
+  for(let i=0;i<n;i++){
+    const m = new Map();
+    m.set(c.x+","+c.y+","+c.d+",0", ONE);
+    states.push({ kind:"one", modes:m });
+  }
+}
+
 function emit(){
   for(const c of comps){
-    if(c.type==="source"){
-      if(c.mode==="classical" || tick % c.period) continue;
-      const n = c.mode==="single" ? 1 : poisson(+muEl.value);
-      for(let i=0;i<n;i++){
-        const m = new Map();
-        m.set(c.x+","+c.y+","+c.d+",0", ONE);
-        states.push({ kind:"one", modes:m });
-      }
-    } else if(c.type==="pair"){
-      if(tick % c.period) continue;
-      const a = c.x+","+c.y+","+c.d+",0";
-      const b = c.x+","+c.y+","+DIRSEQ[(DIRSEQ.indexOf(c.d)+1)%4]+",0";
-      const p = new Map(), s = 1/Math.SQRT2;
-      p.set(a+"|"+b, [s,0]); p.set(b+"|"+a, [s,0]);
-      states.push({ kind:"two", pairs:p });
+    if(c.type!=="source" && c.type!=="pair") continue;
+    if(c.trig) continue;                       // waiting on an electrical trigger
+    if(c.type==="source" && c.mode==="classical") continue;
+    if(tick % c.period === 0) fireSource(c);
+  }
+  if(sched.length){
+    const keep = [];
+    for(const e of sched){
+      if(e.t > tick){ keep.push(e); continue; }
+      const c = byId(e.id);
+      if(c && e.t === tick) fireSource(c);
     }
+    sched = keep;
   }
 }
 
@@ -549,12 +594,19 @@ function drawComp(g, c, now){
     }
   }
   else if(c.type==="phase"){
-    const w = S*0.17, h = S*0.6;
-    g.fillStyle = "rgba(116,169,255,.18)"; g.strokeStyle = "#74a9ff"; g.lineWidth = 1.3;
+    const w = S*0.17, h = S*0.6, on = gateOpen(c);
+    if(c.gate && on){
+      g.beginPath(); g.rect(X-w-S*0.1, Y-h/2-S*0.1, 2*w+S*0.2, h+S*0.2);
+      g.fillStyle = "rgba(242,179,61,.14)"; g.fill();
+    }
+    g.fillStyle   = c.gate ? (on ? "rgba(242,179,61,.28)" : "rgba(120,132,150,.10)")
+                           : "rgba(116,169,255,.18)";
+    g.strokeStyle = c.gate ? (on ? "#ffca5e" : "#4d5768") : "#74a9ff";
+    g.lineWidth = 1.3;
     g.beginPath(); g.rect(X-w,Y-h/2,2*w,h); g.fill(); g.stroke();
-    g.fillStyle = "#a9c8ff"; g.font = `500 ${Math.max(8,S*0.2)}px ${MONO}`;
-    const t = (c.phi/Math.PI);
-    g.fillText((Math.round(t*100)/100)+"π", X, Y+S*0.55);
+    g.fillStyle = c.gate ? (on ? "#ffca5e" : "#6b7686") : "#a9c8ff";
+    g.font = `500 ${Math.max(8,S*0.2)}px ${MONO}`;
+    g.fillText((Math.round(c.phi/Math.PI*100)/100)+"π" + (c.gate && !on ? " ·" : ""), X, Y+S*0.55);
   }
   else if(c.type==="delay"){
     g.strokeStyle = "#93a0b4"; g.lineWidth = Math.max(1.3,S*0.045);
@@ -624,6 +676,11 @@ function drawComp(g, c, now){
       g.beginPath(); g.arc(X+v[0]*(w+S*0.23), Y+v[1]*(w+S*0.23), Math.max(1.5,S*0.048),0,6.2832);
       g.fillStyle = "#ff3b4e"; g.fill();
     }
+    if(c.trig){                                    // externally triggered
+      const t = Math.max(0, 1-(now-c.ctrl)/300);
+      g.beginPath(); g.arc(X-w, Y-w, Math.max(2,S*0.07), 0, 6.2832);
+      g.fillStyle = t>0 ? "#ffca5e" : "#7a6431"; g.fill();
+    }
   }
 }
 
@@ -642,6 +699,30 @@ function drawWires(g, now){
     }
   }
   g.setLineDash([]);
+}
+
+function drawCtrl(g, now){
+  for(const c of comps){
+    const src = c.trig || c.gate;
+    if(!src) continue;
+    const d = byId(src); if(!d) continue;
+    const live = c.gate ? gateOpen(c) : (now - c.ctrl) < 300;
+    const x0 = cx(d.x), y0 = cy(d.y), x1 = cx(c.x), y1 = cy(c.y);
+    const kx = x0, ky = y1;                                  // elbow control point
+    g.beginPath(); g.moveTo(x0,y0); g.quadraticCurveTo(kx,ky,x1,y1);
+    g.strokeStyle = live ? "rgba(255,202,94,.95)" : "rgba(242,179,61,.28)";
+    g.lineWidth = live ? 2.2 : 1.3;
+    g.setLineDash([S*0.1, S*0.1]); g.stroke(); g.setLineDash([]);
+    // arrowhead pointing into the driven component
+    const ax = x1-kx, ay = y1-ky, L = Math.hypot(ax,ay) || 1;
+    const ux = ax/L, uy = ay/L, hx = x1-ux*S*0.42, hy = y1-uy*S*0.42, s = S*0.11;
+    g.beginPath();
+    g.moveTo(hx+ux*s*1.7, hy+uy*s*1.7);
+    g.lineTo(hx-uy*s, hy+ux*s);
+    g.lineTo(hx+uy*s, hy-ux*s);
+    g.closePath();
+    g.fillStyle = live ? "#ffca5e" : "rgba(242,179,61,.45)"; g.fill();
+  }
 }
 
 function drawBeams(g){
@@ -687,6 +768,7 @@ function draw(){
   ctx.drawImage(boardCv,0,0);
   ctx.setTransform(DPR,0,0,DPR,0,0);
   drawWires(ctx, now);
+  drawCtrl(ctx, now);
   drawBeams(ctx);
   for(const c of comps) drawComp(ctx, c, now);
   const sel = byId(selected);
@@ -830,7 +912,12 @@ function rotate(){
 function removeSel(){
   const c = byId(selected); if(!c) return;
   comps = comps.filter(x=>x!==c);
-  for(const k of comps) if(k.type==="coinc") k.wires = k.wires.filter(w=>w!==c.id);
+  for(const k of comps){
+    if(k.type==="coinc") k.wires = k.wires.filter(w=>w!==c.id);
+    if(k.trig === c.id) k.trig = null;
+    if(k.gate === c.id){ k.gate = null; k.gateFrom = -1; k.gateUntil = -1; }
+  }
+  sched = sched.filter(e=>e.id!==c.id);
   selected = null; reindex(); renderInsp(); renderCounters();
 }
 
@@ -841,12 +928,19 @@ const NAMES = { source:"Source", pair:"Pair source", mirror:"Mirror", bs:"Beamsp
   coinc:"Coincidence counter" };
 
 const fmt = {
-  R:      v => Math.round(v*100)+" : "+Math.round(100-v*100),
-  phi:    v => (Math.round(v/Math.PI*100)/100)+"π",
-  k:      v => "+"+v+" cell"+(v>1?"s":""),
-  period: v => v+" ticks",
-  window: v => "±"+v+" ticks"
+  R:         v => Math.round(v*100)+" : "+Math.round(100-v*100),
+  phi:       v => (Math.round(v/Math.PI*100)/100)+"π",
+  k:         v => "+"+v+" cell"+(v>1?"s":""),
+  period:    v => v+" ticks",
+  window:    v => "±"+v+" ticks",
+  trigDelay: v => v+" ticks",
+  gateDelay: v => v+" ticks",
+  gateWidth: v => v+" ticks"
 };
+const sel = (k, cur, none) => `<select data-sel="${k}"><option value="">${none}</option>` +
+  comps.filter(x=>x.type==="detector")
+       .map(d=>`<option value="${d.id}"${cur===d.id?" selected":""}>${d.label}</option>`).join("") +
+  `</select>`;
 const row = (l,ctl)=>`<div class="row"><label>${l}</label>${ctl}</div>`;
 const rng = (l,k,v,mn,mx,st)=>
   `<div class="row"><label>${l}</label><span class="ctl">
@@ -867,11 +961,20 @@ function renderInsp(){
   if(c.type==="mirror"||c.type==="bs")
     h += row("Orientation", `<button class="btn" data-act="rot">${O_GLYPH[c.o]}&nbsp; rotate</button>`);
   if(c.type==="bs") h += rng("Reflect : transmit","R",c.R,0.05,0.95,0.01);
-  if(c.type==="phase") h += rng("Phase shift φ","phi",c.phi,0,6.2832,0.0628);
+  if(c.type==="phase"){
+    h += rng("Phase shift φ","phi",c.phi,0,6.2832,0.0628);
+    h += row("Driven by", sel("gate", c.gate, "Always on"));
+    if(c.gate){
+      h += rng("Switch-on delay","gateDelay",c.gateDelay,0,16,1);
+      h += rng("Open for","gateWidth",c.gateWidth,1,16,1);
+    }
+  }
   if(c.type==="delay") h += rng("Path added","k",c.k,1,8,1);
   if(c.type==="source"||c.type==="pair"){
     h += row("Emits toward", `<button class="btn" data-act="rot">${ARROW[c.d]}&nbsp; rotate</button>`);
-    h += rng("Emission period","period",c.period,3,24,1);
+    h += row("Triggered by", sel("trig", c.trig, "Free-running"));
+    if(c.trig) h += rng("Trigger delay","trigDelay",c.trigDelay,0,20,1);
+    else h += rng("Emission period","period",c.period,3,24,1);
   }
   if(c.type==="source")
     h += row("Statistics", `<span class="tag">${
@@ -909,6 +1012,11 @@ function renderInsp(){
     c[k] = (k==="R"||k==="phi") ? +inp.value : Math.round(+inp.value);
     inp.nextElementSibling.textContent = fmt[k](c[k]);
     cDirty = true;
+  }));
+  insp.querySelectorAll("select[data-sel]").forEach(s=>s.addEventListener("change", ()=>{
+    c[s.dataset.sel] = s.value || null;
+    if(s.dataset.sel==="gate"){ c.gateFrom = -1; c.gateUntil = -1; }
+    cDirty = true; renderInsp();
   }));
   insp.querySelectorAll("input[data-wire]").forEach(inp=>inp.addEventListener("change", ()=>{
     const id = inp.dataset.wire;
@@ -975,10 +1083,11 @@ document.getElementById("zero").addEventListener("click", ()=>{
     if(c.type==="detector"||c.type==="coinc"){ c.count = 0; c.flash = -1e9; }
     if(c.pending) c.pending = [];
   }
+  sched = [];
   lastVals.clear(); renderCounters(); renderInsp();
 });
 document.getElementById("clear").addEventListener("click", ()=>{
-  comps = []; states = []; detN = 0; ccN = 0; selected = null;
+  comps = []; states = []; sched = []; detN = 0; ccN = 0; selected = null;
   reindex(); renderInsp(); renderCounters();
 });
 
