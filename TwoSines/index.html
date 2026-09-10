@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two Sines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bench:#12151a; --panel:#1a1f27; --panel-2:#222834; --raise:#2a3140;
+  --line:#2c3441; --line-2:#3c4657;
+  --ink:#e9edf4; --dim:#8e98a9; --faint:#5d6779;
+  --wa:#4bd3c1; --wb:#a877e0; --ws:#ffca5e; --sel:#74a9ff;
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bench);color:var(--ink);font-family:var(--sans);
+     -webkit-font-smoothing:antialiased;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100dvh;min-height:540px}
+
+header{display:flex;align-items:center;gap:18px;padding:10px 16px;
+  background:linear-gradient(180deg,#1d222b,#161a21);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.brand .sub{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.03em}
+.grp{display:flex;align-items:center;gap:8px}
+.grp>.lbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.btn{border:1px solid var(--line);background:#191e26;border-radius:7px;padding:6px 12px;font-size:12px;
+  color:var(--dim)}
+.btn:hover{border-color:var(--line-2);color:var(--ink)}
+.btn.primary{background:#243043;border-color:#33465f;color:#dce8ff}
+.btn.primary[data-run="1"]{background:#2a3a29;border-color:#3d5a3c;color:#d8f2d4}
+input[type=range]{accent-color:var(--sel);width:100px}
+.val{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:52px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.spacer{flex:1}
+
+main{display:grid;grid-template-columns:1fr 286px;min-height:0}
+#stage{position:relative;min-width:0;min-height:0;background:var(--bench)}
+canvas{display:block;width:100%;height:100%}
+
+aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;
+  min-height:0;height:100%;overflow:auto}
+.card{border-bottom:1px solid var(--line);padding:13px 15px}
+h2{margin:0 0 11px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);font-weight:500;display:flex;align-items:center;gap:8px}
+h2 .swatch{width:9px;height:9px;border-radius:2px;flex:none}
+h2 .eq{margin-left:auto;letter-spacing:0;text-transform:none;font-size:10px;color:var(--faint)}
+.rows{display:flex;flex-direction:column;gap:10px}
+.ctl{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px}
+.ctl .name{font-size:12px;color:var(--dim)}
+.ctl .unit{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.ctl .line{grid-column:1 / -1;display:flex;align-items:center;gap:9px}
+.ctl input[type=range]{flex:1;width:auto}
+.num{width:66px;background:#12161d;border:1px solid var(--line);border-radius:6px;padding:4px 6px;
+  font-family:var(--mono);font-size:11.5px;color:var(--ink);text-align:right;
+  font-variant-numeric:tabular-nums}
+.num:hover{border-color:var(--line-2)}
+.num::-webkit-outer-spin-button,.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.num[type=number]{-moz-appearance:textfield}
+.lock{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.lock input{accent-color:var(--wb)}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px;
+  font-variant-numeric:tabular-nums}
+td{padding:5px 0;border-bottom:1px solid #232935;text-align:right;color:var(--ink)}
+td:first-child{text-align:left;color:var(--dim)}
+tr:last-child td{border-bottom:0}
+
+.legend{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#161a21;
+  border-top:1px solid var(--line);overflow-x:auto}
+.eqchip{flex:none;display:flex;align-items:center;gap:9px;padding:7px 13px;border-radius:8px;
+  background:var(--panel-2);border:1px solid var(--line);font-family:var(--mono);font-size:11.5px;
+  color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+.eqchip .sw{width:10px;height:10px;border-radius:2px;flex:none}
+
+@media (max-width:900px){ main{grid-template-columns:1fr} aside{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <h1>Two Sines</h1>
+    <span class="sub">superposition &middot; beats &middot; fringe visibility</span>
+  </div>
+
+  <div class="grp">
+    <span class="lbl">Window</span>
+    <input type="range" id="win" min="0.5" max="10" step="0.1" value="2.5">
+    <span class="val" id="winV">2.5 s</span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="grp">
+    <button class="btn primary" id="run" data-run="1">Pause</button>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+</header>
+
+<main>
+  <div id="stage"><canvas id="cv"></canvas></div>
+
+  <aside>
+    <div class="card">
+      <h2><span class="swatch" style="background:var(--wa)"></span>Wave A<span class="eq" id="eqA"></span></h2>
+      <div class="rows" id="ctlA"></div>
+    </div>
+    <div class="card">
+      <h2><span class="swatch" style="background:var(--wb)"></span>Wave B<span class="eq" id="eqB"></span></h2>
+      <div class="rows" id="ctlB"></div>
+      <label class="lock" style="margin-top:11px">
+        <input type="checkbox" id="lock"> lock f&#8322; to f&#8321;
+      </label>
+    </div>
+    <div class="card">
+      <h2><span class="swatch" style="background:var(--ws)"></span>Superposition</h2>
+      <table><tbody id="read"></tbody></table>
+    </div>
+  </aside>
+</main>
+
+<div class="legend" id="legend"></div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Two Sines — y(t) = a·sin(2πf t + φ), added point by point.
+   The envelope of the sum is  √(a₁² + a₂² + 2a₁a₂·cos(2πΔf·t + Δφ)),
+   which is why equal frequencies give a fixed amplitude and unequal
+   ones beat at |Δf|.
+   ===================================================================== */
+
+const DEF = { a1:1, f1:3, p1:0, a2:1, f2:3.4, p2:0, win:2.5 };
+const P = { ...DEF };
+let lockF = false, running = true, t0 = 0;
+
+const COL = { A:"#4bd3c1", B:"#a877e0", S:"#ffca5e" };
+const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+const TAU = Math.PI*2;
+
+const wave = (a,f,p,t) => a * Math.sin(TAU*f*t + p*Math.PI/180);
+
+/* ---------------------------- controls ---------------------------- */
+const SPECS = [
+  { k:"a", name:"Amplitude", unit:"", min:0, max:1.5, step:0.01, dec:2 },
+  { k:"f", name:"Frequency", unit:"Hz", min:0, max:10, step:0.01, dec:2 },
+  { k:"p", name:"Phase",     unit:"°",  min:-360, max:360, step:1, dec:0 }
+];
+function buildControls(host, idx){
+  for(const s of SPECS){
+    const key = s.k + idx;
+    const el = document.createElement("div");
+    el.className = "ctl";
+    el.innerHTML =
+      `<span class="name">${s.name}</span><span class="unit">${s.unit || "&nbsp;"}</span>
+       <span class="line">
+         <input type="range" min="${s.min}" max="${s.max}" step="${s.step}" value="${P[key]}">
+         <input class="num" type="number" min="${s.min}" max="${s.max}" step="${s.step}"
+                value="${P[key].toFixed(s.dec)}" aria-label="${s.name}">
+       </span>`;
+    host.appendChild(el);
+    const rangeEl = el.querySelector("input[type=range]");
+    const numEl   = el.querySelector(".num");
+    const clamp = v => Math.min(s.max, Math.max(s.min, v));
+    const push = (v, from)=>{
+      P[key] = clamp(v);
+      if(from !== "range") rangeEl.value = P[key];
+      if(from !== "num")   numEl.value   = P[key].toFixed(s.dec);
+      if(s.k === "f" && lockF){                       // keep the pair locked
+        const other = idx === 1 ? 2 : 1;
+        P["f"+other] = P[key];
+        UI["f"+other].set(P[key]);
+      }
+      syncReadouts();
+    };
+    rangeEl.addEventListener("input", ()=> push(+rangeEl.value, "range"));
+    numEl.addEventListener("input", ()=>{
+      const v = parseFloat(numEl.value);
+      if(Number.isFinite(v)) push(v, "num");
+    });
+    numEl.addEventListener("blur", ()=> numEl.value = P[key].toFixed(s.dec));
+    UI[key] = { set(v){ P[key] = clamp(v); rangeEl.value = P[key]; numEl.value = P[key].toFixed(s.dec); } };
+  }
+}
+const UI = {};
+buildControls(document.getElementById("ctlA"), 1);
+buildControls(document.getElementById("ctlB"), 2);
+
+document.getElementById("lock").addEventListener("change", e=>{
+  lockF = e.target.checked;
+  if(lockF){ UI.f2.set(P.f1); syncReadouts(); }
+});
+const winEl = document.getElementById("win"), winV = document.getElementById("winV");
+winEl.addEventListener("input", ()=>{
+  P.win = +winEl.value; winV.textContent = P.win.toFixed(1)+" s"; syncReadouts();
+});
+const runBtn = document.getElementById("run");
+runBtn.addEventListener("click", ()=>{
+  running = !running;
+  runBtn.textContent = running ? "Pause" : "Run";
+  runBtn.dataset.run = running ? "1" : "0";
+});
+document.getElementById("reset").addEventListener("click", ()=>{
+  Object.assign(P, DEF); t0 = 0;
+  for(const k of ["a1","f1","p1","a2","f2","p2"]) UI[k].set(P[k]);
+  winEl.value = P.win; winV.textContent = P.win.toFixed(1)+" s";
+  document.getElementById("lock").checked = false; lockF = false;
+  syncReadouts();
+});
+
+/* ---------------------------- readouts ---------------------------- */
+const read = document.getElementById("read");
+const legend = document.getElementById("legend");
+const fixed = (v,n)=> (Math.abs(v) < 5e-4 ? 0 : v).toFixed(n);
+
+function syncReadouts(){
+  const df = Math.abs(P.f1 - P.f2);
+  const dp = ((P.p2 - P.p1) % 360 + 540) % 360 - 180;      // to (-180, 180]
+  const same = df < 1e-9;
+  const hi = P.a1 + P.a2, lo = Math.abs(P.a1 - P.a2);
+  const now = Math.sqrt(P.a1**2 + P.a2**2 + 2*P.a1*P.a2*Math.cos(dp*Math.PI/180));
+  const V = (P.a1 && P.a2) ? (2*P.a1*P.a2)/(P.a1**2 + P.a2**2) : 0;
+
+  const rows = [
+    ["Δf", fixed(df,2)+" Hz"],
+    ["Δφ", fixed(dp,0)+"°  ·  "+fixed(dp/180,2)+"π"],
+    ["Beat period", same ? "—" : fixed(1/df,3)+" s"],
+    same ? ["Sum amplitude", fixed(now,3)]
+         : ["Envelope", fixed(lo,2)+" → "+fixed(hi,2)],
+    ["Fringe visibility", fixed(V,3)]
+  ];
+  read.innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+
+  const eq = (a,f,p)=> `${a.toFixed(2)} sin(2π·${f.toFixed(2)} t${
+    Math.abs(p) < 0.5 ? "" : (p<0?" − ":" + ")+Math.abs(p).toFixed(0)+"°"})`;
+  document.getElementById("eqA").textContent = "";
+  document.getElementById("eqB").textContent = "";
+  legend.innerHTML =
+    `<span class="eqchip"><span class="sw" style="background:${COL.A}"></span>A(t) = ${eq(P.a1,P.f1,P.p1)}</span>
+     <span class="eqchip"><span class="sw" style="background:${COL.B}"></span>B(t) = ${eq(P.a2,P.f2,P.p2)}</span>
+     <span class="eqchip"><span class="sw" style="background:${COL.S}"></span>A(t) + B(t)${
+       same ? " = " + fixed(now,2) + " sin(2π·" + P.f1.toFixed(2) + " t + ψ)" : ""}</span>`;
+}
+
+/* ---------------------------- rendering ---------------------------- */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W = 800, H = 600, DPR = 1;
+const PADL = 56, PADR = 20, PADT = 14, PADB = 30, GAP = 14;
+
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect();
+  if(r.width < 2 || r.height < 2) return;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = r.width; H = r.height;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+}
+new ResizeObserver(resize).observe(document.getElementById("stage"));
+
+function panelRect(i){
+  const h = (H - PADT - PADB - 2*GAP) / 3;
+  return { x:PADL, y:PADT + i*(h+GAP), w:W - PADL - PADR, h };
+}
+
+function drawPanel(i, title, fn, col, opts){
+  const R = panelRect(i);
+  const yMax = opts.yMax;
+  const mid = R.y + R.h/2;
+  const sy = v => mid - (v/yMax) * (R.h/2 - 6);
+  const sx = u => R.x + u*R.w;
+
+  ctx.save();
+  ctx.fillStyle = "#161a21";
+  ctx.beginPath(); ctx.roundRect(R.x, R.y, R.w, R.h, 6); ctx.fill();
+  ctx.strokeStyle = "#232935"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(R.x+.5, R.y+.5, R.w-1, R.h-1, 6); ctx.stroke();
+
+  // vertical time grid, one line every 0.5 s of the window
+  const tickEvery = P.win <= 1.2 ? 0.1 : P.win <= 3 ? 0.25 : P.win <= 6 ? 0.5 : 1;
+  const tStart = Math.ceil(t0/tickEvery)*tickEvery;
+  ctx.strokeStyle = "#20262f"; ctx.lineWidth = 1;
+  for(let t = tStart; t <= t0 + P.win + 1e-9; t += tickEvery){
+    const u = (t - t0)/P.win, x = Math.round(sx(u)) + .5;
+    ctx.beginPath(); ctx.moveTo(x, R.y+1); ctx.lineTo(x, R.y+R.h-1); ctx.stroke();
+    if(i === 2){
+      ctx.fillStyle = "#5d6779"; ctx.font = `400 10px ${MONO}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(t.toFixed(tickEvery < 0.5 ? 2 : 1), x, R.y+R.h+7);
+    }
+  }
+  // horizontal guides
+  ctx.strokeStyle = "#242b35";
+  for(const v of [-yMax, -yMax/2, yMax/2, yMax]){
+    const y = Math.round(sy(v)) + .5;
+    ctx.beginPath(); ctx.moveTo(R.x+1, y); ctx.lineTo(R.x+R.w-1, y); ctx.stroke();
+  }
+  ctx.strokeStyle = "#3b4553"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(R.x+1, Math.round(mid)+.5); ctx.lineTo(R.x+R.w-1, Math.round(mid)+.5); ctx.stroke();
+
+  // y labels
+  ctx.fillStyle = "#5d6779"; ctx.font = `400 10px ${MONO}`;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.fillText(yMax.toFixed(1), R.x-8, sy(yMax));
+  ctx.fillText("0",             R.x-8, mid);
+  ctx.fillText((-yMax).toFixed(1), R.x-8, sy(-yMax));
+
+  // ghosts of the two components behind the sum
+  if(opts.ghosts){
+    for(const gh of opts.ghosts){
+      ctx.beginPath();
+      for(let px = 0; px <= R.w; px++){
+        const t = t0 + (px/R.w)*P.win, y = sy(gh.fn(t));
+        px ? ctx.lineTo(R.x+px, y) : ctx.moveTo(R.x+px, y);
+      }
+      ctx.strokeStyle = gh.col + "40"; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+  }
+  // envelope
+  if(opts.env){
+    for(const sgn of [1,-1]){
+      ctx.beginPath();
+      for(let px = 0; px <= R.w; px++){
+        const t = t0 + (px/R.w)*P.win, y = sy(sgn*opts.env(t));
+        px ? ctx.lineTo(R.x+px, y) : ctx.moveTo(R.x+px, y);
+      }
+      ctx.strokeStyle = "rgba(255,202,94,.4)"; ctx.lineWidth = 1.2;
+      ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  // the trace, with a soft glow underneath
+  const trace = (w, style)=>{
+    ctx.beginPath();
+    for(let px = 0; px <= R.w; px++){
+      const t = t0 + (px/R.w)*P.win, y = sy(fn(t));
+      px ? ctx.lineTo(R.x+px, y) : ctx.moveTo(R.x+px, y);
+    }
+    ctx.strokeStyle = style; ctx.lineWidth = w; ctx.lineJoin = "round"; ctx.stroke();
+  };
+  trace(6, col + "1e");
+  trace(2, col);
+
+  ctx.fillStyle = "#8e98a9"; ctx.font = `500 10px ${MONO}`;
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.save();
+  ctx.globalAlpha = .9;
+  ctx.fillText(title, R.x+10, R.y+8);
+  ctx.restore();
+  ctx.restore();
+}
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle = "#12151a"; ctx.fillRect(0,0,W,H);
+
+  const yMax = Math.max(0.2, P.a1 + P.a2);
+  const A = t => wave(P.a1, P.f1, P.p1, t);
+  const B = t => wave(P.a2, P.f2, P.p2, t);
+  const env = t => Math.sqrt(P.a1**2 + P.a2**2 +
+    2*P.a1*P.a2*Math.cos(TAU*(P.f1-P.f2)*t + (P.p1-P.p2)*Math.PI/180));
+
+  drawPanel(0, "A(t)",      A,            COL.A, { yMax });
+  drawPanel(1, "B(t)",      B,            COL.B, { yMax });
+  drawPanel(2, "A(t) + B(t)", t=>A(t)+B(t), COL.S,
+    { yMax, env, ghosts:[{fn:A,col:COL.A},{fn:B,col:COL.B}] });
+
+  ctx.fillStyle = "#5d6779"; ctx.font = `400 10px ${MONO}`;
+  ctx.textAlign = "right"; ctx.textBaseline = "top";
+  ctx.fillText("t / s", PADL - 8, H - PADB + 7);
+}
+
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.1, (now - last)/1000); last = now;
+  if(running) t0 += dt * 0.25;                    // quarter-speed drift
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resize();
+syncReadouts();
+requestAnimationFrame(t=>{ last = t; loop(t); });
+</script>
+</body>
+</html>
